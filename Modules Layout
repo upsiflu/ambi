@@ -1,0 +1,94 @@
+COMPOSITION
+
+--a = Anchor | Input | Media | Addition = a--
+
+Version = List Edit
+Site  = Site  {app:App, version:Version}
+Modal = Review Version --This is the only modal that has its own state.
+RouteOptions = {modal:Maybe Modal}
+Route = Route {site:Site, window:Locus, focus:Locus, options:RouteOptions}
+Model = Visiting Route | Editing Route Me
+Me = Creating Auth Avatar | Switching Auth Avatar | Embodying Auth Avatar
+
+update msg model =
+  --the update composes a composition.
+  case Model of
+    Visiting r
+     -> (site, focus, app, version, session, composition) = (r.site, r.focus,
+    Editing r me
+     ->
+  in case msg of
+    Propose edit
+      -> if (auth == Nothing) then model else
+      -- send to DB and indicate proposal through an animation
+    Successful edit
+      -> -- indicate that it has merged through an animation
+    Trigger locus
+      -> let item = locus |> getItem in
+          -- change focus and perhaps switch a variable in the item
+    MakeSuggestions locus
+      ->
+    MakeAssertions locus
+      ->
+    OpenReview
+      ->
+    OpenAvatar
+    SwitchAvatar new
+    CreateAvatar
+
+
+--State-type
+
+DROPDOWN <>
+  AvatarMenu --Me
+
+WINDOW <
+--accessing different scopes and toolsets--
+  Review         --Locus, RouteOptions.modal=Review
+  Subcomposition --Locus, RouteOptions.window is not the root of the composition
+
+--select one to close popup--
+POPUP x
+  EmbodyAvatar   --Me
+  Preview        --Locus
+  SelectMedia --Uploaded Media
+POPUP (small) v
+  DisambiguateAdd --Item
+  CreateAvatar --Me
+
+
+
+DB
+ | users   + u
+ | avatars + a
+ | sites   + s
+           | sessions  + e
+           | versions  - ee
+
+
+     docs are named
+         - > -1..
+         + > 1..
+
+
+
+the db
+  has
+    a positive list of users
+    a postive list of avatars
+    a positive list of sites (regardless of whether they are public)
+
+each site
+  links
+    the avatar that created it
+    the site it is a remix of
+  includes
+    its whole ambilang
+    the minimum positive edits to attain its current version
+  has
+    a positive list of sessions that modify the current version ('draft sessions')
+    a negative list of versions (which are bundles of sessions)
+
+each session
+  includes
+    a positive list of edits
