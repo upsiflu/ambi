@@ -1,11 +1,31 @@
-# Elm App
+# Ambilang Interpreter
 
-This project is bootstrapped with [Create Elm App](https://github.com/halfzebra/create-elm-app).
+Ambilang is a simple language that can denote choreographic constraints:
+
+- Concepts are named and reusable. They can either be defined as composed by other building blocks, or just tag input data.
+
+- Relations map over their parameters and thus introduce links between concepts. For example, a concept can have 'more' of a specified other concept.
+
+As of now, this prototype is not working yet and needs a lot of work.
+
+# Scope
+
+The interpreter is intended to showcase the ability of Ambilang to bridge the domains of dance and information processing.
+
+
+
+
+
+
+
+
+
+## Elm App
+
+This project is bootstrapped with [Create Elm App](https://github.com/halfzebra/create-elm-app). I copied the readme here.
 
 Below you will find some information on how to perform basic tasks.
 You can find the most recent version of this guide [here](https://github.com/halfzebra/create-elm-app/blob/master/template/README.md).
-
-## Table of Contents
 
 * [Sending feedback](#sending-feedback)
 * [Folder structure](#folder-structure)
