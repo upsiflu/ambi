@@ -1,22 +1,41 @@
 module Me exposing (Me, nobody) 
 
+import Avatar exposing Avatar
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{----------------------------------------------------------------
+
+    Me
+
+    keep connection betweem 
+
+ ----------------------------------------------------------------}
 
 
 
 type Me             = Nobody
-                    | Creating Auth Avatar
-                    | Switching Auth Avatar
-                    | Embodying Auth Avatar
+                    | Creating Auth Avatar User
+                    | Switching Auth Avatar User
+                    | Embodying Auth Avatar User
                     
-type Avatar         = Novatar
-                    | Avatar AvatarID AvatarPicture
-                    
-type alias AvatarID = String
-
-type AvatarPicture  = AvatarPicture String
-
 
 
 

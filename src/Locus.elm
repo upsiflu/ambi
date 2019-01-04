@@ -1,6 +1,6 @@
-module Locus exposing (Locus, reverse, neutral)
+module Locus exposing (Locus, reverse, neutral, role, lociBefore, lociAfter)
 
-import Type.encodeConcept
+import App exposing (encodeConcept, encodeWord)
 
 
 
@@ -25,15 +25,18 @@ import Type.encodeConcept
 
     Locus
     
-    locates any actionable item within a site.
+    locates any actionable item within a Site.
     It omits the Relations, but may include Edit numbers
-    to visit dynamically created items.
+    to visit dynamically created items as well as extra steps
+    to locate (but keep ambiguous) perspectives.
+    
+(L) Leaves contain editable data.
+(I) Instances are created from Templates. Each is named after
+    the signature of the Edit that created it.
+(P) If multiple Alternatives define one concept, choose one.
     
     It goes from outside to inside, but you can reverse a locus.
-    A locus can describe a rel. or abs. path through your type.
-    
-    In case there is an ambiguous concept, it may disambiguate
-    this step (see Perspective).
+    A locus can describe a rel. or abs. path through your app.
     
     Each data and each edit has exactly one abs. locus.
     Concepts that are actionable (e.g. with +) are also listed.
@@ -47,64 +50,73 @@ import Type.encodeConcept
       d     -- a/c/d       -- actionable: +
        +                   -- relation; not listed.
         e   -- a/c/d/0.0.0 -- editable item.
+       +
+        f
+      d
+       g
 
  ----------------------------------------------------------------}
 
- 
+
+
 type Locus = Locus (List Step)
-type Step  = C Concept | E Edit | P Perspective
+type Step  = L Leaf | E Edit.Signature | P Perspective
 
 
-encode ( Locus steps )
-   = steps
-   |> map \step ->
-         case step of
-            C c -> encodeConcept c
-            E e -> Edit.signature e
-            P p -> encodePerspective p
-         
+lociBefore : Locus -> Locus -> List Locus
+lociBefore pivot window =
+
+lociAfter : Locus -> Locus -> List Locus
+lociAfter pivot window =
+
+type Role =
+    
+
+role : App -> Locus -> Role
+role app locus=
+
+
+
 {----------------------------------------------------------------
 
     Ambiguity Reduction
     
-    
- -- Alternatives ------------------------------------------------
-    
-    If the template of a type is ambiguous, we get an
-    Alternation. Switch between Alternatives to Choose one
-    and store it in the Edit.
-
     
  -- Variants ----------------------------------------------------
     
     Add a perspective to your locus in order to glance at one of
     the definition of an ambiguous concept.
     
-    A concept ambiguity multiplies aspects over 'variants'.
+    A Concept ambiguity multiplies aspects over Variants.
     Use it to build a table. While rows are focused like
     any item, a Perspective chooses the 'column' in a table.
-     
-     
+ 
+ 
+ -- Alternatives ------------------------------------------------
+    
+    If the Template of an App is ambiguous, we get an
+    Alternation. Switch between Alternatives to Choose one
+    and store it in the Edit.
+
+ 
  ----------------------------------------------------------------
      
     Ambilang knows four and half types of ambiguity:
     
     (1) Conflicting Concept Definitions
-            Encoding: Type.Variation; Type.Variant
+            Encoding: App.Variation; App.Variant
            Reduction: via Locus.Perspective
        Reinstatement: via Locus.Perspective=All
                   UI: a scrollable table
     
 --  (1.5) TODO: Sequence
-            Encoding: Type.Succession; Type.Current
-           Reduction: via Locus.Perspective
-       Reinstatement: via Locus.Perspective=All
+            Encoding: App.Succession; App.Current
                   UI: a transformation button? Or a horiz. Shift?
     
-    (2) Multiple Locus Templates
-            Encoding: Type.Alternation; Type.Alternative
+    (2) Multiple Template definitions for a user-added instance
+            Encoding: App.Alternation; App.Alternative
            Reduction: via Edit.Choice
-       Reinstatement: via undo (only the author can reambiguate)
+       Reinstatement: via undo (only the curator can reambiguate)
                   UI: a dismissible dialog
                   
 --  (3) TODO: Accidental Data Ambivalence
@@ -128,13 +140,31 @@ encode ( Locus steps )
  ----------------------------------------------------------------}
 
 
-type Perspective = Perspective Variation Variant
+type Perspective = Perspective { options:Variation, choice:Variant }
+
+
     
+    
+    
+    
+-- ENCODING --
+
+
+
+type alias Path = List String
+
+encode : Locus -> Path
+encode ( Locus step:s ) =
+    encode s 
+    |> (::) case step of
+         L l -> encodeLeaf l
+         E e -> Edit.signature e
+         P p -> encodePerspective p
+         
 
 encodePerspective (Perspective variation variant) =
-    (encodeLocus l) ++ "=" ++ (encodeDefinition variant) 
+    (encodeLocus variation) ++ "=" ++ (encodeDefinition variant) 
 
 encodeDefinition (Definition group) =
-    "{" ++ (List.join "," group) ++ "}"
+    group |> map encodeWord |> String.join (",")
 
-    

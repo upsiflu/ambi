@@ -3,8 +3,8 @@ module Route exposing (Route, visit, view)
 import Type exposing (Type, Locus, Word, Perspective, neutral)
 import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, <?>, stringParam)
 import Url exposing (Url)
-
-
+import Site exposing (viewSite, viewFocus)
+import Thread exposing (Thread)
 
 
 
@@ -21,45 +21,83 @@ import Url exposing (Url)
 
 {----------------------------------------------------------------
 
-    Route
+    Route, referencing
+    
+  > a Site
+  > a window into the app
+  > flags to persist auxiliary navigation
+  > a focus within the window,
+  
     corresponds exactly to a valid URL.
     
-    use this module
+    Use this module
     to safely navigate within a given site.
     Route draws its site with its flags.
 
     Example: tangiblemodel.com/
              flupsi/portfolio/
-             ?review=0&language={en}
+             ?watch=me;language=en
              #post.0/1/3
     
  ----------------------------------------------------------------}
     
 
-type Route          = Route {site:Site, window:Locus, flags:RouteFlags, focus:Locus} | Requesting Url
-type RouteFlags     = RouteFlags {review:ReviewMode, perspectives:List Perspective}
-type ReviewMode     = Reviewing | Default
+type Route          = Requesting Url
+                    | Failed { invalid:Url, previous:Maybe Url }
+                    | Route
+                        { site:Site
+                        , window:Locus                      -- /
+                        , watch:Maybe String                -- ?
+                        , perspectives:List Perspective     -- ;
+                        , focus:Locus                       -- #
+                        }
 
 
--- A route hosts one 
-type Site           = Site  {app:App, version:Version, draft:Draft}
+--- VIEWING ---
 
-type Version        = Version {id:Int, edits:List Edit}
-type Draft          = Draft {my:Session, other:List Session}
-type alias Session  = {id:Int, contact:String, edits:List Edit}
-type App            = App {avatarID:String, model:Type}
-
-
-
-
-
-
---- VIEW ---
-
-view : Route -> Html msg
-view route
- = 
-
+view route =
+    case route of
+        Requesting url 
+            -> Url.toString url |> text
+        Failed request 
+            -> div [] [ Url.toString request.invalid |> text
+                      , case request.previous of
+                                Nothing -> text " --- Try changing the address." ]
+                                Just url -> span [] [text "previous was: ", Url.toString request.invalid |> text]
+                      ]
+        Route { routeData | site, window, focus }
+            -> case site of
+                    Loading _
+                        -> h2 [] [text "site is loading (viewItem)"]
+                    Failed _
+                        -> h2 [] [text "site loading failed (viewItem)"]
+                    Site sig { s | app, basis, sessions }
+                        -> let
+                            withData viewer
+                                = viewer app basis sessions
+                            before
+                                = Locus.before focus window
+                                    |> map ( viewItem |> withData )
+                            focused
+                                = focus |> ( viewFocus |> withData )
+                            after 
+                                = Locus.after focus window
+                                    |> map ( viewItem |> withData )
+                           in
+                            before ++ focused ++ after |> div [class "thread"]
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
+                   
 --- NAVIGATING ---
 
 

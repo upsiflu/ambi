@@ -19,6 +19,11 @@ import Route exposing (visit, view)
 
 
 
+
+
+
+
+
 {----------------------------------------------------------------
     
     Main
@@ -26,6 +31,8 @@ import Route exposing (visit, view)
     generates a runtime.
     It maintains a Route (which animates an URL)
     and can be extended by Me (the choreographer/user) as author.
+    
+    Go here for view and update.
     
  ----------------------------------------------------------------}
     
@@ -79,7 +86,8 @@ view model =
     , body =
       div []
           [ h1 [] [ text "Milestone 9: Navigation, Edits, and Modules Rewrite" ]
-          , 
+          , Site.view route.site
+          
 
 
 

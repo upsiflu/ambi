@@ -1,4 +1,4 @@
-module Type exposing (Type, Leaf, Variation, Alternation, Definition, Parameters, encodeConcept)
+module App exposing (App, Leaf, Variation, Alternation, Definition, Parameters, encodeConcept)
 
 import List
 import Lazy.Tree as Tree exposing (Tree(..), Forest)
@@ -21,17 +21,17 @@ import Lazy.Tree.Zipper as Zipper exposing (Zipper, current, fromTree, children,
 
 {----------------------------------------------------------------
     
-    Type
+    App
     
-    is a representation of the immutable structure
-    of an app, in the form of a lazy rose-tree.
+    is an immutable structure, written in ambilang,
+    known to the computer in the form of a lazy rose-tree.
     
     The use of the Zipper datastructure means that costly
-    inferences on the type can be deferred and no initialization
+    inferences on the app can be deferred and no initialization
     needs to be triggered. Instead, the Zipper maintains a
     construction function 'on demand'.
 
- -- Aspects of a Type -------------------------------------------
+ -- Aspects of an App -------------------------------------------
     
     Indentations denote parent-child relation,
     Symbols +, <, >, : denote mappings over children,
@@ -55,7 +55,7 @@ import Lazy.Tree.Zipper as Zipper exposing (Zipper, current, fromTree, children,
  ----------------------------------------------------------------}
 
  
-type alias Type
+type alias App
     = Zipper Word
 
 type alias Group
@@ -102,7 +102,7 @@ type Parameters = Parameters Group
 
 
 -- the only way to construct a Definition is to find it:
-definition : Type -> Concept -> Definition
+definition : App -> Concept -> Definition
 definition t concept =
     let
         asDefinition = Definition
@@ -128,7 +128,7 @@ type Leaf = Leaf
     
     Of the five ambiguities that an app can represent
     (see Locus.elm), two can be written in Ambilang and
-    are thus explicit part of the type.
+    are thus explicit part of the app.
     
     Since words at a given level are unique, you can denote
     ambiguity by repeating a word several times at one level.
@@ -177,9 +177,9 @@ encodeWord word =
     
 {----------------------------------------------------------------
     
-    Constructing a Type from a JSON intermediate
+    Constructing an App from a JSON intermediate
     
-    The database stores type in the JSON format 
+    The database stores the app in the JSON format 
 
  ----------------------------------------------------------------}
 

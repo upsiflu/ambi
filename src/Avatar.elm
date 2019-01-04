@@ -1,4 +1,4 @@
-port module Avatar exposing (Signature)
+port module Avatar exposing (Avatar, Signature)
 
 
 
@@ -31,14 +31,9 @@ port module Avatar exposing (Signature)
 
 type Avatar        
     = Loading Signature
+    | Failed Signature Problem
     | Novatar Signature
     | Avatar Signature AvatarPicture
-    | Failed Signature Problem
     
 type Signature      = Signature String
 type AvatarPicture  = AvatarPicture String
-
-
-
-disembody _ = Nobody
-nobody      = Nobody

@@ -21,7 +21,14 @@ port module Version exposing ()
 
 {----------------------------------------------------------------
     
-    Version
+    Version, with
+    
+  * A list of Sessions relative to the previous session
+  * A cache with the data to just construct its result,
+    
+    referencing
+
+  > its previous version,
     
     corresponds to a file on the database.
     
@@ -31,3 +38,14 @@ port module Version exposing ()
     Site duplicates the most recent version's cache.
 
  ----------------------------------------------------------------}
+
+ 
+ 
+ 
+type Version        = Version Signature
+                        { sessions:List Session
+                        , cache:Cache
+                        , previous:Version.Signature
+                        }
+
+type alias Cache = List (Locus, Data)

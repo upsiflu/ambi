@@ -1,5 +1,5 @@
 module Edit exposing
-    (Edit, generator
+    (Edit, generator, Data (..)
     
     -- readable --
     , signature )
@@ -39,28 +39,38 @@ import Locus
     
  -- Composability of Edits --------------------------------------
  
-    ...
+    A modification is anything a user can do with data.
+    It depends on the data which modifications are available.
+    An Edit is a Modification integrated into a chain.
+    Data is the result of a chain of Edits.
+ 
+    For a given locus, a Data object of Zero is constructed.
+    Its type signature limits which modifications can be applied.
+    It is the locus of data specifies its type.
+    
+    When parsing edits, the Zero Data is encapsulated in more
+    data objects, registering only positive changes.
     
  ----------------------------------------------------------------}
 
 
 type Edit
-    = Edit {signature:Signature, moderation:Moderation, modification:Modification}
+    = Edit Signature Modification
 
 
-type Modification ---- TODO: Limits ----------
-    = Append              -- appendable
-    | Remove Edit         -- appended
-    | Put String          -- leafy
-    | Undo Edit           -- mine
-    | Choose Alternative  -- Alternative
+type Modification ------------ TODO: LOCUS ------ PARAMETER limits ----------
+    = Append                      -- appendable   
+    | Remove Edit                 -- --           appended to this
+    | Put String                  -- leafy        --
+    | Choose Type.Alternative     -- Alternation  is choice within locus 
+    | Undo Edit                   -- --           mine; to this
 
 
-type Data
-    = Zero
-    | Appended Signature Data
-    | Input String Data
-    | Choice Type.Parameters Data
+type Data -------------------- TODO: LOCUS ------ PARAMETER limits ----------
+    = Zero                        -- --
+    | Appended Signature Data     -- appendable   
+    | Input String Data           -- leafy
+    | Choice Type.Alternative Data-- Alternation  is choice within locus 
         
 
 type Signature = Signature {o:Ordinal, n:Session.Name, context:Session.Name}
@@ -68,6 +78,65 @@ type Signature = Signature {o:Ordinal, n:Session.Name, context:Session.Name}
 type Ordinal = Ordinal Int -- the depth of the tree for a specific Edit.
 
 
+
+
+
+
+{----------------------------------------------------------------
+    
+    Reducing Edits to Data
+    
+    Since conceptually, edits are added on top of each other,
+    and they come in a definite order, we only need to define
+    how any one edit is applied on one data.
+    
+ ----------------------------------------------------------------}
+
+zero = Zero
+ 
+edit : Edit -> Data -> Data
+edit (Edit sig modification) dat =
+    let
+        without trash from =
+            case from of
+                 Zero -> from
+                 trash inner -> inner
+                 good  inner -> without trash inner |> good
+    in
+        dat |>
+            case modification of
+                Append
+                    -> Appended sig
+                Remove (Edit sig _)
+                    -> without (Appended sig)
+                Put string
+                    -> Input string
+                Choose alternative
+                    -> Choice alternative
+                Undo (Edit sig toTrash)
+                    -> case toTrash of
+                        Append
+                            -> without (Appended sig)
+                        Remove (Edit restoreSig _)
+                            -> Appended restoreSig
+                        Put string
+                            -> without (Input string)
+                        Choose alternative
+                            -> without (Choice alternative)
+                        Undo _ -> always -- actually, should never happen.
+
+
+type Template
+    = Ambiguous Alternation
+    | Exactly Parameters
+template : Locus -> Template
+template instance
+        
+
+        
+        
+        
+                {- different version, using folds and filters 
 
 reduce : (List Edit) -> Data
 reduce edits =
@@ -99,7 +168,7 @@ reduce edits =
         |> foldl wrapData Zero
         
         
-    
+                -}
 
  
  

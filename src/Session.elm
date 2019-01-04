@@ -2,7 +2,8 @@ port module Session exposing
     ( Session, encode, decoder, create, commit
     
       -- readable --
-    , signature, contact, serverTime, edits, highestOrdninal )
+    , signature, contact, serverTime, edits, highestOrdninal
+    )
  
 import Edit
 
@@ -25,18 +26,27 @@ import Edit
 
 {----------------------------------------------------------------
 
-    Session
+    Session (stateful), with
+    
+  * Nominal, a unique increment doubling as name (immutable)
+  * contact info
+  * the server time at creation (immutable)
+  * Edits during the session (append-only)
+  * Discussions during the session (append-only),
 
-    is part of a drafting process. A session begins when both
-    a user, a site and an embodiment are given.
+    begins when a user, a site and an embodiment are given.
     
     It stores a contact and a unique Signature (a Nominal),
-    which is created by the server. A list of Edits, organized
-    by Locus, stores all previous Edits.
+    which is created by the server. Lists of Edits and
+    Discussions, each organized by Locus, store its history.
     
     *read* a Session to trace what other users are writing.
     *create* a Session to make it your own.
-    *commit* an edit to prepend it to your session.
+    *commit* an Edit.
+    *contribute* a Discussion.
+    
+    TODO: Constraints create helper apps that send out data
+    into the main app in order to relate and limit values.
 
  ----------------------------------------------------------------}
 
@@ -46,15 +56,25 @@ type Session
     | Failed Session Problem
     | Session SessionData
 
-type alias SessionData = {signature:Signature, contact:User.Contact, serverTime:(Maybe Time), edits:Edits}
+type alias SessionData =
+    { signature:Signature
+    , contact:String
+    , serverTime:(Maybe Time)
+    , loci:Dict Locus Contributions
+    }
 
+    
+type alias Contributions =
+    { edits:Edits, discussions:Discussions }
+    
 type Signature          -- a Nominal only created by the server
     = Signature Int
     | Requested
 
     
     
-type alias Edits = List (Locus, List (Edit))
+type alias Edits = List (Edit)
+type alias Discussions = List (Discussion)
 
 decoder : Decoder Signature -- from JSON 
 encode : Signature -> Value -- to JSON
@@ -81,23 +101,24 @@ serverResult session result
 signature: Session -> Signature
 contact: Session -> User.Contact
 serverTime : Session -> Time
-edits : Session -> Edits
-highestOrdinal : Session -> Edit.Ordinal
+
+-- per locus --
+edits : Locus -> Session -> Maybe Edits
+edits locus session =
+    case session of
+         Loading _ -> Nothing
+         Failed _  -> Nothing
+         Session s -> s.loci |> get locus |> Maybe.map .edits
+             
+
+discussions : Locus -> Session -> Maybe Discussions
+highestOrdinal : Locus -> Session -> Edit.Ordinal
 
 
-commit: Edit -> Session { SessionData | mine } -> Session
-commit edit (Session previousData)
-    = Session { previousData | edits=edit::previousData.edits }
-
-
-
-
-
-
-
-
-
-
-
-
-
+commit: Edit -> Locus -> Session { SessionData | mine } -> Result
+commit edit locus session =
+    case session of
+         Loading _ -> Error "session is not loaded yet"
+         Failed _  -> Error "session failed loading"
+         Session s ->
+            -- ask firebase to insert 
