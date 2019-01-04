@@ -1,4 +1,17 @@
-port module Site exposing (Signature)
+module Site exposing 
+    (
+    
+    -- read only --
+      Site, Signature
+    , Item, item
+    
+    -- write from JSON --
+    , populate, fail, loading
+    
+    -- map --
+    , union
+    
+    )
 
 import App
 import Version
@@ -7,17 +20,8 @@ import Edit exposing (zero, edit, Data (..))
 import List exposing (map, foldl, concat)
 import Dict exposing (get)
 import Locus exposing (role)
-
-
-
-
-
-
-
-
-
-
-
+import Tagged.Dict exposing (singleton, values, get)
+import Tagged exposing (Tagged)
 
 
 
@@ -51,88 +55,82 @@ import Locus exposing (role)
 
  ----------------------------------------------------------------}
 
- 
+
 type Site
     = Loading Signature
-    | Failed Signature Problem
-    | Site Signature
-        { app:App
-        , basis:Dict Locus Data 
-        , sessions:List Session
-        , versions:List Version
-        }
-
-type Signature =
-        { curator:Avatar.Signature
-        , appSignature:String }
+    | Failed Problem Signature
+    | Site Cache
 
 
-value : List Session -> Locus -> Dict Locus Data -> Data
-value basis sessions locus =
-    sessions
-        |> map ( Session.edits locus )
-        |> map ( withDefault [] )
-        |> concat
-        |> foldl edit ( get locus basis )
+
+
+type Id = Id -- Tag used for all Sites.
+
+type alias Signature = -- Tag specific to one Site.
+    Tagged Id Token
+
+type alias Token =
+    ( Avatar.Signature, App.Signature )
+
+type alias Cache =
+    Tagged.Dict Id Token Copy -- A Dict for Token -> Copy, but with keys that are minted by Site.
+
+    
+
+
+type alias Copy =
+    { app: App
+    , basis: Dict Locus Data 
+    , sessions: Session.Cache
+    , versions: List Version
+    }
+        
+
+
+
+
 
         
-{----------------------------------------------------------------
 
-    A Focus
-    
-    has a speech bubble underneath for the discussion
-    
-    has space on top and bottom which can be clicked to unfocus
-    
-    is a transparent div
-    
-    has a text field that shares its focus state if Leaf
 
-    if the text field is empty, then media buttons appear
-    and also a (-) button on top right if it was added
-    
-    has a bottom sheet if multiple templates apply.
-    Choices are saved to the session.
+        
+--- Data from the Server arrived ---------------------------------
 
-    is a htable with sticky header if multiple concept definitions
-    apply anywhere up the hierarchy.
-    The Url syncs the scrollstate of the table
-    
-    
-    
 
-    A Focus
-    
-    is:
-    
-  + an Alternation of several Alternatives
-    - with an insufficient chain of Choices | render with chooser
-  | not an Alternation, or Alternation with final choice
-    + a Leaf                                
-      + 
-    | an actionable Concept                 | render with action
+sign : Token -> Signature
+sign token = Tagged Id token
 
-    
-    has:
-    
-  - Data (including Zero)
-  - 
-  
-    may have:
-    
-  - neighbor Variants on both sides
-  
+populate : Value -> Token -> Site
+populate json signature =
+    decode json |> singleton ( sign token ) |> Site
 
- ----------------------------------------------------------------}
+loading = Loading
+
+fail : Problem -> Token -> Site
+fail problem token = sign token -> Failed problem
 
 
 
-viewItem : App -> Dict Locus Data Locus -> List Session -> Locus -> Html msg
-viewItem app basis sessions locus =
-    case ( template app locus, value basis sessions locus) of
-        ( Naming concept, Zero )
-           -> 
-        Appended Signature Data     
-        Input String Data           
-        Choice Type.Alternative Data 
+
+--- Managing several copies ---------------------------------------
+
+
+combine : Cache -> Cache -> Cache
+combine cacheA cacheB = cacheB
+
+
+
+retrieve : Signature -> Cache -> Maybe Copy
+retrieve signature = get signature
+    
+dataAt : Copy -> Locus -> Data
+dataAt { copy | basis, sessions } locus =
+    sessions
+        |> values                        -- [Session.Copy]
+        |> map ( Session.edits locus )   --  Maybe Edits
+        |> map ( withDefault [] )        --  or at least []
+        |> concat                        -- Edits from all session copies
+        |> foldl edit ( basis |> get locus )  -- onn top of basis
+
+        
              

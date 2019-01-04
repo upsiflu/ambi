@@ -129,6 +129,7 @@ edit (Edit sig modification) dat =
 type Template
     = Ambiguous Alternation
     | Exactly Parameters
+
 template : Locus -> Template
 template instance
         

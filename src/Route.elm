@@ -45,49 +45,15 @@ import Thread exposing (Thread)
 type Route          = Requesting Url
                     | Failed { invalid:Url, previous:Maybe Url }
                     | Route
-                        { site:Site
-                        , window:Locus                      -- /
-                        , watch:Maybe String                -- ?
-                        , perspectives:List Perspective     -- ;
-                        , focus:Locus                       -- #
+                        { baseUrl: String
+                        , location: Site.Signature
+                        , window: Locus                      -- /
+                        , watch: Maybe String                -- ?
+                        , perspectives: List Perspective     -- ;
+                        , focus: Locus                       -- #
                         }
 
-
---- VIEWING ---
-
-view route =
-    case route of
-        Requesting url 
-            -> Url.toString url |> text
-        Failed request 
-            -> div [] [ Url.toString request.invalid |> text
-                      , case request.previous of
-                                Nothing -> text " --- Try changing the address." ]
-                                Just url -> span [] [text "previous was: ", Url.toString request.invalid |> text]
-                      ]
-        Route { routeData | site, window, focus }
-            -> case site of
-                    Loading _
-                        -> h2 [] [text "site is loading (viewItem)"]
-                    Failed _
-                        -> h2 [] [text "site loading failed (viewItem)"]
-                    Site sig { s | app, basis, sessions }
-                        -> let
-                            withData viewer
-                                = viewer app basis sessions
-                            before
-                                = Locus.before focus window
-                                    |> map ( viewItem |> withData )
-                            focused
-                                = focus |> ( viewFocus |> withData )
-                            after 
-                                = Locus.after focus window
-                                    |> map ( viewItem |> withData )
-                           in
-                            before ++ focused ++ after |> div [class "thread"]
-                   
-                   
-                   
+               
                    
                    
                    

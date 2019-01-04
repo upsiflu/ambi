@@ -1,4 +1,4 @@
-port module User exposing (contact)
+module User exposing (contact)
 
 import Url
 

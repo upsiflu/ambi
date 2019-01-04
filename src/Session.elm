@@ -1,19 +1,21 @@
-port module Session exposing
-    ( Session, encode, decoder, create, commit
+module Session exposing
+    (
     
-      -- readable --
-    , signature, contact, serverTime, edits, highestOrdninal
+    -- read only --
+      Site, Signature
+    , Item, item
+    
+    -- write from JSON --
+    , populate, fail
+    
+    -- map --
+    , union
+    
     )
- 
+
 import Edit
-
-
-
-
-
-
-
-
+import Tagged.Dict exposing (singleton, union)
+import Tagged exposing (Tagged)
 
 
 
@@ -53,40 +55,77 @@ import Edit
 
 type Session
     = Loading Signature
-    | Failed Session Problem
-    | Session SessionData
+    | Failed Problem Signature
+    | Session Cache
 
-type alias SessionData =
-    { signature:Signature
-    , contact:String
-    , serverTime:(Maybe Time)
-    , loci:Dict Locus Contributions
+
+
+
+type Id = Id -- Tag used for all Sessions
+
+type alias Signature = -- Tag specific to one Session   
+    Tagged Id Token
+
+type alias Token =
+    Int
+
+type alias Cache =
+    Tagged.Dict Id Token Copy
+
+    
+
+
+type alias Copy =
+    { contact: String
+    , serverTime: (Maybe Time)
+    , loci: Dict Locus Contributions
     }
-
-    
 type alias Contributions =
-    { edits:Edits, discussions:Discussions }
-    
-type Signature          -- a Nominal only created by the server
-    = Signature Int
-    | Requested
+    { edits:Edits
+    , discussions:Discussions }
+type alias Edits = List Edit
+type alias Discussions = List Discussion
+
+
+
+
+
+
+
+--- Data from the Server arrived ---------------------------------
+
+
+sign : Token -> Signature
+sign token = Tagged Id token
+
+populate : Value -> Token -> Session
+populate json signature =
+    decode json |> singleton ( sign token ) |> Session
+
+fail : Problem -> Token -> Site
+fail problem token = sign token -> Failed problem
 
     
-    
-type alias Edits = List (Edit)
-type alias Discussions = List (Discussion)
+
+
+--- Managing several copies ---------------------------------------
+
+
+combine : Cache -> Cache -> Cache
+combine = union
+
+
+
+
+
 
 decoder : Decoder Signature -- from JSON 
 encode : Signature -> Value -- to JSON
 
 
 
-create
-    = \suppliedContact -> Session { suppliedContact | signature:Requested, serverTime:Nothing, edits:[], mine:True}
-    -- and then request a unique nominal via port.
 
-read
-    = \suppliedSignature -> Loading suppliedSignature
+
 
 serverResult : Session -> ServerData -> Session
 serverResult session result
@@ -98,17 +137,17 @@ serverResult session result
                  Session provided -> Session { provided | serverTime:decodeTime s, edits:decodeEdits s }
 
 
-signature: Session -> Signature
+                 
+                 
 contact: Session -> User.Contact
 serverTime : Session -> Time
 
+
+
 -- per locus --
-edits : Locus -> Session -> Maybe Edits
-edits locus session =
-    case session of
-         Loading _ -> Nothing
-         Failed _  -> Nothing
-         Session s -> s.loci |> get locus |> Maybe.map .edits
+edits : Locus -> Copy -> Maybe Edits
+edits locus copy =
+    copy.loci |> get locus |> Maybe.map .edits
              
 
 discussions : Locus -> Session -> Maybe Discussions
