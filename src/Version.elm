@@ -55,16 +55,16 @@ type Version
 
 
 
-type Id = Id -- Tag used for all Versions
+type Signed = Signed -- Tag used for all Versions
 
 type alias Signature = -- Tag specific to one Version
-    Tagged Id Token
+    Tagged Signed Token
 
 type alias Token =
     Int
 
 type alias Cache =
-    TDict Signature Copy
+    Tagged.Dict Signed Token Copy
    
    
    
@@ -90,11 +90,13 @@ type alias Copy =
 
 
 sign : Token -> Signature
-sign token = Tagged Id token
+sign token = Tagged Signed token
 
-populate : Value -> Token -> Version
+populate : Value -> Signature -> Version
 populate json signature =
-    decode json |> singleton ( sign token ) |> Version
+    decode json |> singleton signature |> Version
+
+loading token = sign token |> Loading
 
 fail : Problem -> Token -> Version
 fail problem token = sign token -> Failed problem

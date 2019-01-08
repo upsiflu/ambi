@@ -64,16 +64,16 @@ type Site
 
 
 
-type Id = Id -- Tag used for all Sites.
+type Signed = Signed -- Tag used for all Sites.
 
 type alias Signature = -- Tag specific to one Site.
-    Tagged Id Token
+    Tagged Signed Token
 
 type alias Token =
-    ( Avatar.Signature, App.Signature )
+    { curator: Avatar.Token, app: App.Token }
 
 type alias Cache =
-    Tagged.Dict Id Token Copy -- A Dict for Token -> Copy, but with keys that are minted by Site.
+    Tagged.Dict Signed Token Copy -- A Dict for Token -> Copy, but with keys that are minted by Site.
 
     
 
@@ -82,7 +82,7 @@ type alias Copy =
     { app: App
     , basis: Dict Locus Data 
     , sessions: Session.Cache
-    , versions: List Version
+    , versions: Version.Cache
     }
         
 
@@ -90,21 +90,39 @@ type alias Copy =
 
 
 
+
+{- Loading data
+
+Main ----Url---> Route 
+Requesting <----------
+
+
+
         
 
-
+-}
         
 --- Data from the Server arrived ---------------------------------
 
 
 sign : Token -> Signature
-sign token = Tagged Id token
+sign token = Tagged Signed token
 
-populate : Value -> Token -> Site
+
+-- only loading sites can be populated. So Main needs to pass a signature.
+
+populate : Value -> Signature -> Site
 populate json signature =
-    decode json |> singleton ( sign token ) |> Site
+    decode json |> singleton signature |> Site
 
-loading = Loading
+
+-- a Load can only be attempted if the signatures for the app and creator are provided.
+
+load : Token -> Site
+load token =
+    sign token |> Loading
+
+
 
 fail : Problem -> Token -> Site
 fail problem token = sign token -> Failed problem

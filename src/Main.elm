@@ -50,7 +50,8 @@ type alias Model =
 init : () -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
-        route = Route.decode url
+        ( route, databaseRequest )
+            = Route.visit url
     in
         (
             { route: route
@@ -58,7 +59,7 @@ init flags url key =
             , site: Site.loading route.location 
             , key: key
             }
-            , Cmd.none
+            , databaseRequest
         )
 
     
@@ -233,7 +234,7 @@ view { route, site } =
 
 
 
-        viewItem : List msg -> App -> Dict Locus Data Locus -> List Session -> Locus -> Html msg
+        viewItem : ist msg -> App -> Dict Locus Data Locus -> List Session -> Locus -> Html msg
         viewItem actions app basis sessions locus =
             case ( template app locus, value basis sessions locus) of
                 ( Naming concept, Zero ) ->

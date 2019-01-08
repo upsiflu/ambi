@@ -31,7 +31,7 @@ import Lazy.Tree.Zipper as Zipper exposing (Zipper, current, fromTree, children,
     needs to be triggered. Instead, the Zipper maintains a
     construction function 'on demand'.
 
- -- Aspects of an App -------------------------------------------
+ -- Constellations of an App ------------------------------------
     
     Indentations denote parent-child relation,
     Symbols +, <, >, : denote mappings over children,
@@ -124,40 +124,51 @@ type Leaf = Leaf
 
 {----------------------------------------------------------------
     
-    Encoding Type Ambiguities
+    Encoding Structural Ambiguities
     
     Of the five ambiguities that an app can represent
     (see Locus.elm), two can be written in Ambilang and
-    are thus explicit part of the app.
+    are thus explicit and immutable part of an app.
     
     Since words at a given level are unique, you can denote
     ambiguity by repeating a word several times at one level.
     
- -- Variation ---------------------------------------------------
+ -- Multidefinition ---------------------------------------------
     
-    A Variant is one of several Definitions given for a
-    unique Concept.
+    A filter is one of several Definitions given for a
+    unique Concept. Multiple filters form a kind of table
+    where each column only shows data that matches.
     
- -- Alternation -------------------------------------------------
+ -- Multiprototype ----------------------------------------------
     
-    An Alternative is one of several parameter groups given
-    to a Relation.
+    If there are parallel prototypes, an item may be
+    Item.Ambiguous.
+
+ -- Combining Filters and Prototypes ----------------------------
+
+    If a Concept F, defined a both by F0 and F1, is one
+    of the Prototypes of P, nothing surprising happens.
+
+    Conversely, if F is designed such that it can append
+    a prototype P0 and a prototype P1, then P0 and P1 will
+    only show up in those columns that match their type, i.e.
+    exactly "+ P0" resp. "+ P1", but not e.g. "P0".
 
  ----------------------------------------------------------------}
 
 
-type alias Variation 
-    = Multiple Variant
-type Variant
-    = Variant Definition
-    
 
-type alias Alternation
-    = Multiple Alternative
-type Alternative
-    = Alternative Parameters
-
+type Definition = D Group
+type Multidefinition = DD Multiple Group
+type alias DefinitionChoice = Branch Multidefinition 
     
+type Prototype = P Group
+type Multiprototype = PP Multiple Group
+type alias PrototypeChoice = Branch Multiprotptype
+
+type Branch context = Branch Group -- a phantom type.
+
+
 type Multiple a
     = Two  a a
     | Many a (Multiple a)
@@ -177,78 +188,58 @@ encodeWord word =
     
 {----------------------------------------------------------------
     
-    Constructing an App from a JSON intermediate
+    Constructing an App from a String
     
-    The database stores the app in the JSON format 
+    The database stores the app in the standard UTF-8 format.
 
  ----------------------------------------------------------------}
 
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+https://ellie-app.com/4nBvVtFpCS6a1
 
 
-view : App -> Html msg
-view a =
-  section [class "App"]
-    [ h2 [] [text "App Structure"]
-    , let
-        captionProperties l = case children l of
-          (x::y::xs) ->  [class "productCaption"]
-          _          ->  [class ""]
-        properties l = case children l of
-          (x::y::xs) ->  [class "product"]
-          _          ->  [class "app"]
-        viewLevel l = div (captionProperties l) [viewSymbol (current l), div (properties l) <| List.map (viewLevel) (openAll l) ]
-      in
-        viewLevel (root a)
-    ]
 
-viewDescription app =
-  case current app of
-    Template -> "(Template)"
-    Many -> "(Many)"
-    Name s -> s
-    Generate g -> case g of
-       Emblem       -> "Emblem"
-       Paragraph    -> "Paragraph"
-       Link         -> "Link"
-       Title        -> "Title"
-       Caption      -> "Caption"
-       Text         -> "Text"
 
-viewSymbol symbol =
- let
-  viewContainer    = div [class "app"]
-  viewType         = span [class "type"]
- in case symbol of
-  Template        -> viewContainer [viewType [text " < "] ]
-  Many            -> viewContainer [viewType [text " + "] ]
-  Name    s       -> viewContainer [viewType [text ("'"++s++"'")] ]
-  Generate g -> case g of
-     Emblem       -> viewContainer [viewType [text "Emblem"] ]
-     Paragraph    -> viewContainer [viewType [text "Paragraph"] ]
-     Link         -> viewContainer [viewType [text "Link"] ]
-     Title        -> viewContainer [viewType [text "Title"] ]
-     Caption      -> viewContainer [viewType [text "Caption"] ]
-     Text         -> viewContainer [viewType [text "Text"] ]
 
-type Data = Data Symbol (List Data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+lines s 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 initial : App
 initial =

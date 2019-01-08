@@ -60,17 +60,17 @@ type Edit
 
 type Modification ------------ TODO: LOCUS ------ PARAMETER limits ----------
     = Append                      -- appendable   
+    | Undo Edit                   -- --           mine; to this
     | Remove Edit                 -- --           appended to this
     | Put String                  -- leafy        --
-    | Choose Type.Alternative     -- Alternation  is choice within locus 
-    | Undo Edit                   -- --           mine; to this
+    | Choose PrototypeChoice      -- Alternation  is choice within locus 
 
 
 type Data -------------------- TODO: LOCUS ------ PARAMETER limits ----------
     = Zero                        -- --
     | Appended Signature Data     -- appendable   
     | Input String Data           -- leafy
-    | Choice Type.Alternative Data-- Alternation  is choice within locus 
+    | Choice PrototypeChoice Data -- Alternation  is choice within alternative groups (Prototypes) 
         
 
 type Signature = Signature {o:Ordinal, n:Session.Name, context:Session.Name}
