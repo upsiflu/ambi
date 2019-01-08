@@ -67,9 +67,16 @@ type AndOr a b
 
 
 
-interface : Item -> Interface.Entry Locus msg
-interface item key =
+interface : Item -> Main.Msg -> Interface.Entry Locus msg
+interface item appendMsg key =
     let
+
+        plusP prototype =
+            { primaryAction: |> Interface.Button
+            , contextAction: Nothing
+            , view: div [ class "plus" ] [ text "+" ]
+            }
+
         ( primary, others ) =
             case item of
 
@@ -77,18 +84,13 @@ interface item key =
                 Form
 
                     { concepts
-                    , appending
-                    Maybe <| Either               
-                        App.Prototype               
-                        App.Multiprototype          
-                    , children: Multiple Step               -- if appendable, Edit
-                    } ->
-                        (
-                            { primaryAction: Link Self 
+                    , appending          
+                    , children
+                    } -> (  { primaryAction: Link Self 
                             , contextAction: Nothing
                             , view: text "=== FORM ==="
                             }
-                        , 
+                         , 
                             case appending of
                                 Nothing -> []
                                 Just proto ->
@@ -97,7 +99,7 @@ interface item key =
                                             [ plusP single ]
                                         Right multi ->
                                             [ plusPP multi ]
-                        )
+                         )
 
         Rubric
 

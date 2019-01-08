@@ -72,7 +72,7 @@ type Msg
     | Outgoing Value
     | UrlRequested Browser.UrlRequest
     | UrlChanged   Url
-    
+    | ClickedAppend Locus
     
     
 
@@ -147,6 +147,22 @@ view { route, site } =
                         Nothing ->
                             text "The site you requested was loaded but then lost from your local memory. Refresh your browser."
                                 
+
+                        Just { app, basis, sessions } ->
+                        
+                            Interface.draw
+                                { prologue: Zipper  ( Entry k a )        -- first entry to items; horizontal movement is possible.
+                                , entries: BiZipper ( Entry k a )        -- vertical and horizontal movement.
+                                , epilogue: { view: Viewer }
+                                , meta: Maybe ( Meta k a )
+                                , changer: k -> a -> msg
+                                }
+    ClickedAppend
+                            
+                            
+                            
+                                {--
+                                
                         Just { app, basis, sessions } ->
 
                             let
@@ -166,7 +182,7 @@ view { route, site } =
                             in
                                 before ++ focused ++ after |> div [class "thread"]
 
-                                
+                                --}
                                 
                                 
 {----------------------------------------------------------------
@@ -232,9 +248,9 @@ view { route, site } =
 
  ----------------------------------------------------------------}
 
+        viewItem : Locus -> 
 
-
-        viewItem : ist msg -> App -> Dict Locus Data Locus -> List Session -> Locus -> Html msg
+        viewItem : List msg -> App -> Dict Locus Data Locus -> List Session -> Locus -> Html msg
         viewItem actions app basis sessions locus =
             case ( template app locus, value basis sessions locus) of
                 ( Naming concept, Zero ) ->

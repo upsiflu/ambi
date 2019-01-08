@@ -29,44 +29,59 @@ type Mode = Default -- later, we can add Enrichments and add variety to each vie
 
 -------------------------------------
 
--- a is for the key type, i.e. Locus. --
+-- k: key type, i.e. Locus. msg: action type --
 
-type alias Interface k a msg =
-    { prologue: Zipper  ( Entry k a )        -- first entry to items; horizontal movement is possible.
-    , entries: BiZipper ( Entry k a )        -- vertical and horizontal movement.
+type alias Interface k msg =
+    { prologue: Zipper  ( Entry k msg )        -- first entry to items; horizontal movement is possible.
+    , entries: BiZipper ( Entry k msg )        -- vertical and horizontal movement.
     , epilogue: { view: Viewer }
-    , meta: Maybe ( Meta k a )
-    , changer: k -> a -> msg
+    , meta: Maybe ( Meta k msg )
+
+
+    ---- Locations -----------------------
+
+
+
+    ---- Messages ----------------------
+
+    , switchMode: Mode -> msg
+    , changeData: Changer
     }
 
 type alias Viewer = Mode -> Html Never
+type alias Changer k a msg = k -> a -> msg
 
-type alias Meta k a =
+
+
+
+type alias Meta k msg =
     { closed: Viewer
-    , opened: Interface k a }
+    , opened: Interface k msg }
 
-type alias Entry k a =
-    { signature: k -- so that Escape can always go up one level and finally go to meta.
+type alias Entry msg =
+    { escape: msg -- so that Escape can always go up one level and finally go to meta.
     , contextMenu: Maybe Mode -- switch mode on longtouch or rightclick or menukey. Prohibited on text.
-    , tabstops: Ring ( Tabstop k a )
+    , tabstops: Ring ( Tabstop k msg )
     }
+
 
 -- A tabstop is "one thing" in the interface. It must have at least a primary action and a viewer.
 -- Switch viewer when you switch the enrichment. The viewer is where you can present data.
+-- Escape is always the containing entry's escape.
 
-type Tabstop k a
-    { primaryAction: Action k a           -- onClick (and, by Browser, through other means)
-    , contextAction: Maybe (Action a)
+type alias Tabstop msg
+    { primaryAction: Action msg           -- onClick (and, by Browser, through other means)
+    , contextAction: Maybe ( Action msg )
     , view: Viewer
     }
 
 type Action k a
-    = Link Location k
-    | Button a
+    = Button a
+    | Link { target: k, description: String }
+    | Control (UI k)
 
-type Location k
-    = Parent k
-    | Self k
+type UI k
+    = Self k
     | Cancel k
     | Ok k
     | Back
@@ -91,6 +106,7 @@ draw i mode =
                 Nothing |> []
                 _ |> []
 
+
         ------------ VIEWS -----------------------------------
 
         drawFocus focused = 
@@ -104,13 +120,20 @@ draw i mode =
             { primaryAction
             , contextAction
             , view
+            , secondaryZipper
             } =
                 case primaryAction of
                     
-                    Button a ->
-                        button [ onClick a ] [ view mode ]
-                    Link k description ->
-                        anchor [ href k ] [ description ]
+                    Button msg ->
+                        button [ onClick msg ] [ view mode ]
+                    Link target description ->
+                        anchor [ href target ] [ description ]
+                    Control ui ->
+                        case ui of
+                            Self ->   anchor [ class "self", i.self |> href ] [ view mode ]
+                            Cancel -> anchor [ class "cancel", i.cancel |> withDefault i.leave |> href ] [ view mode ]
+                            OK ->     anchor [ class "ok", i.leave |> withDefault i.back |> href ] [ text "OK" ]
+                            Back ->   anchor [ class "back", i.back |> withDefault i.leave |> href ] [ text "<" ]
 
     in
         drawPage ++ drawEpilogue ++ drawMeta
