@@ -71,12 +71,12 @@ type alias Cache =
    
 type alias Copy =
     { sessions: Session.Cache
-    , state: Dict Locus Edits
-    , previous: Version.Cache
+    , state: Dict Locus Edits -- This is a shadow of all sessions, minus discussions and contacts. Intended for public.
+    , previous: Version.Signature
     }
 
-    
-    
+
+
     
     
 

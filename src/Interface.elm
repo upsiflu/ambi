@@ -29,34 +29,35 @@ type Mode = Default -- later, we can add Enrichments and add variety to each vie
 
 -------------------------------------
 
--- k: key type, i.e. Locus. msg: action type --
 
-type alias Interface k msg =
-    { prologue: Zipper  ( Entry k msg )        -- first entry to items; horizontal movement is possible.
-    , entries: BiZipper ( Entry k msg )        -- vertical and horizontal movement.
-    , epilogue: { view: Viewer }
-    , meta: Maybe ( Meta k msg )
-
-
-    ---- Locations -----------------------
+type Interface key msg =
+    Interface
+        Meta key msg
+        Prologue
+        Entries key msg
+        Epilogue
+        { back:  }
 
 
+type alias Prologue = Viewer
+type alias Entries  = Zipper ( Entry k msg )
+type alias Epilogue = Viewer
+type alias Meta k msg = { closed: Viewer {--, opened: TODO: Interface k msg--} }
 
-    ---- Messages ----------------------
-
-    , switchMode: Mode -> msg
-    , changeData: Changer
-    }
 
 type alias Viewer = Mode -> Html Never
 type alias Changer k a msg = k -> a -> msg
 
 
 
+    , switchMode: Mode -> msg
+    , changeData: Changer
+    }
 
-type alias Meta k msg =
-    { closed: Viewer
-    , opened: Interface k msg }
+
+
+
+
 
 type alias Entry msg =
     { escape: msg -- so that Escape can always go up one level and finally go to meta.
@@ -84,6 +85,7 @@ type UI k
     = Self k
     | Cancel k
     | Ok k
+    | Dismiss k
     | Back
 
 

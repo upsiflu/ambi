@@ -81,7 +81,6 @@ type alias Cache =
 type alias Copy =
     { app: App
     , basis: Dict Locus Data 
-    , sessions: Session.Cache
     , versions: Version.Cache
     }
         
@@ -138,8 +137,8 @@ combine cacheA cacheB = cacheB
 
 
 
-retrieve : Signature -> Cache -> Maybe Copy
-retrieve signature = get signature
+copy : Signature -> Cache -> Maybe Copy
+copy signature = get signature
     
 dataAt : Copy -> Locus -> Data
 dataAt { copy | basis, sessions } locus =
