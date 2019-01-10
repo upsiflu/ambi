@@ -80,7 +80,7 @@ type alias Cache =
 
 type alias Copy =
     { app: App
-    , basis: Dict Locus Data 
+    , basis: Dict Locus Data
     , versions: Version.Cache
     }
         

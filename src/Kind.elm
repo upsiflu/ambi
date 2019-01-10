@@ -60,7 +60,8 @@ type AndOr a b
 
 
 editor messages =
-    Interface.
+    Interface.Interactor
+        ( \locus -> messages.map message )
 
 
 

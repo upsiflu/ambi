@@ -1,4 +1,4 @@
-module Moderation exposing (suggest, assert, withdraw, delete)
+module Discussion exposing (suggest, assert, withdraw, delete)
 
 
 
@@ -29,7 +29,7 @@ module Moderation exposing (suggest, assert, withdraw, delete)
 
     ----------------------------------------------------------
 
-    The Moderation Circle
+    The moderation Circle
 
                   suggest a modification   -> Suggested
     Suggested  -> withdraw your suggestion -> Withdrawn
@@ -46,7 +46,7 @@ module Moderation exposing (suggest, assert, withdraw, delete)
  ----------------------------------------------------------------}
 
  
-type  Moderation m
+type  Discussion m
     = Suggested m
     | Canonized m
     | Published m

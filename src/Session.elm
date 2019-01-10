@@ -80,6 +80,7 @@ type alias Copy =
     , serverTime: (Maybe Time)
     , loci: Dict Locus Contributions
     }
+    
 type alias Contributions =
     { edits:Edits
     , discussions:Discussions }
