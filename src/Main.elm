@@ -41,10 +41,11 @@ import Json.Decode exposing (Value)
     
 
 type alias Model =
-    { curator:Me
-    , route:Route
-    , site:Site
-    , key:Navigation.Key
+    { curator: Me
+    , route: Route
+    , site: Site
+    , local: Local
+    , key: Navigation.Key
     }
 
 init : () -> Url -> Navigation.Key -> ( Model, Cmd Msg )
@@ -87,9 +88,10 @@ type Msg
     | Input String Locus
     | Append Locus
     | Remove Locus
+    | Discuss Locus
+    | Decide Locus
 
     --- UI
-    | Discuss Locus
     | Dismiss Locus
     | Focus Locus
     | Blur Locus
@@ -119,46 +121,54 @@ update msg model =
 
 
 view : Model -> Html Msg
-view { me, route, site } =
+view { me, route, site, local } =
     
     let
-    --- for Accessibility
-        interactionControls =
-            Interface.interaction
+        navigator =
+            Interface.Navigator
                 { dismiss: Dismiss
                 , focus: Focus
                 , blur: Blur
                 , meta: Menu
                 , context: Context }
 
-    --- specific to this application
-        editingControls =
-            Item.editing
+        editor =
+            Kind.editor
                 { discuss: Discuss
                 , input: Input
                 , append: Append
                 , remove: Remove }
         
-        app = 
-            App.from site
-                |> App.cut route.window -- Route.window is : Lamb
-                    |> App.focus route.focus
+        items : Zipper Interface.Item
+        items =
+            route
+            |> Route.siteToken >> Site.copy
+            |> Result.map .app                                 
 
-        item =
-            Item.from app
+            |> Result.Extra.extract App.siteErrorReporter -- An App that displays the site errors. Site error must include the erred site.
+            |> App.skip route.window 
+            |> App.walk route.focus
 
-        entry =
-            item |> map Item.toEntry 
-     
+            |> Zipper.map ( Kind.fromApp >> Kind.toItem )
+            
+
+        withSyncIndications : Interface.Drawer -> Interface.Drawer
+        withSyncIndications =
+            local
+            |> Local.syncStateIndicator
+            |> Interface.asAnnotator
+
+
     in
-        Interface.compose
-            Me.interface
+        Interface.Skeleton
+            Me.draw
             Route.prologue
-            entry
-            epilogue                                                        -- -> invisible skeleton
-                |> Interface.draw ( Item.drawDataAt site.dataAt )           -- -> static data view
-                |> Interface.wire editingControls interactionControls       -- -> interactive interface
-                |> Interface.view                                           -- -> Html
+            items
+            epilogue                                                   -- -> invisible skeleton
+            
+            |> Interface.draw ( Kind.drawer |> withSyncIndications )   -- -> static data view
+            |> Interface.wire navigator editor                         -- -> interactive interface
+            |> Interface.view                                          -- -> Html
 
 
 

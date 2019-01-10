@@ -1,7 +1,7 @@
-module Interface exposing (Location(..))
+module Interface exposing ( Skeleton, Location (..) )
 
 
-import Html exposing ( a as anchor, button )
+import Html exposing ( a as anchor, button, span )
 import Html.Attributes exposing ( class, href )
 import Html.Events exposing ( onClick )
 
@@ -25,56 +25,47 @@ import Html.Events exposing ( onClick )
 
 
 
-type Mode = Default -- later, we can add Enrichments and add variety to each viewer
-
--------------------------------------
-
-
-type Interface key msg =
-    Interface
-        Meta key msg
-        Prologue
-        Entries key msg
-        Epilogue
-        { back:  }
-
-
-type alias Prologue = Viewer
-type alias Entries  = Zipper ( Entry k msg )
-type alias Epilogue = Viewer
-type alias Meta k msg = { closed: Viewer {--, opened: TODO: Interface k msg--} }
-
-
-type alias Viewer = Mode -> Html Never
-type alias Changer k a msg = k -> a -> msg
-
-
-
-    , switchMode: Mode -> msg
-    , changeData: Changer
-    }
+type Skeleton key msg
+    = Skeleton
+        { prologue: Prologue
+        , items: Items k msg
+        , epilogue: Epilogue
+        , meta: Meta }
 
 
 
 
 
+type Interface
+    = D Drawable
+    | I Interactive
 
-type alias Entry msg =
-    { escape: msg -- so that Escape can always go up one level and finally go to meta.
-    , contextMenu: Maybe Mode -- switch mode on longtouch or rightclick or menukey. Prohibited on text.
-    , tabstops: Ring ( Tabstop k msg )
-    }
+type alias Drawable = Prologue Items Epilogue Meta Drawer
+type alias Interactive = Interactive Prologue Items Epilogue Meta Drawer Navigator Interactor
 
 
--- A tabstop is "one thing" in the interface. It must have at least a primary action and a viewer.
--- Switch viewer when you switch the enrichment. The viewer is where you can present data.
--- Escape is always the containing entry's escape.
 
-type alias Tabstop msg
-    { primaryAction: Action msg           -- onClick (and, by Browser, through other means)
-    , contextAction: Maybe ( Action msg )
-    , view: Viewer
-    }
+
+type alias Prologue = Html Never
+type alias Items k msg = Zipper ( Item k msg )
+type alias Epilogue = Html Never
+type alias Meta = { closed: Html Never }
+
+
+type alias Drawer k = k -> List (Html Never)
+type Interactor k msg = Interactor (k -> List ( Html msg ))
+type alias Navigator msg =
+                { dismiss: msg
+                , focus: msg
+                , blur: msg
+                , meta: msg
+                , context: msg }
+
+type alias Indicator = key -> String
+
+
+type alias Item k msg =
+    --{ controls: Ring ( { action: Action msg, drawer: Drawer k } )}
 
 type Action k a
     = Button a
@@ -89,8 +80,33 @@ type UI k
     | Back
 
 
-draw : Interface k a msg -> Mode -> Html msg
-draw i mode =
+
+
+
+-------------------- Exposed functions ----------------------------------
+
+asAnnotator : Indicator -> Drawer -> Drawer
+asAnnotator indicator drawer
+    = ( \key -> [ span [ class ( indicator key ) ] ( drawer key ) ] )
+    
+
+
+---------------------- Populate an Interface ----------------------------
+
+draw : Skeleton k msg -> Drawer -> Interface k msg
+draw (Skeleton base) dra =
+    D { base | drawer = dra }
+
+wire : Interface k msg -> Navigator k msg -> Interactor k msg -> Interface k msg
+wire i nav int = 
+    case i of
+        D drawable ->
+            I { drawable | navigator = nav, interactor = int }
+        I interactive -> I
+            { interactive | navigator = nav, interactor = int }
+
+view : Interface k msg -> Html msg
+view i =
 
     let
 
@@ -144,6 +160,15 @@ draw i mode =
 
 
 ------------ STRUCTURES -------------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 
 -- Binary Zipper is for arrow key navigation.

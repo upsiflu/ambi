@@ -37,22 +37,30 @@ import Site exposing (viewSite, viewFocus)
              flupsi/portfolio/
              ?watch=me;language=en
              #post.0/1/3
+
+    There are no route errors, meaning that every exposed
+    function in this module produces unwrapped values.
+    
+    Therefore, they can only yield either Errors from other
+    modules or empty wrappers ( String, Zipper... ).
+
+    It also means that Locus must not encode more than its serialized form.
     
  ----------------------------------------------------------------}
     
 
-type Route          = Requesting Url
-                    | Failed { invalid:Url, previous:Maybe Url }
-                    | Route
-                        { domain: { protocol: Protocol, host: String, port_: Maybe Int  }
-                        , location: Site
-                        , window: Locus                      -- /
-                        , watch: Maybe String                -- ?
-                        , perspectives: List Perspective     -- ;
-                        , focus: Locus                       -- #
-                        }
+type alias Route =
+    { domain: { protocol: Protocol, host: String, port_: Maybe Int  }
+    , location: Site
+    , window: Locus                      -- /
+    , focus: Locus                       -- #
+    , optionals: Optionals               -- this is not always given.
+    }
 
-               
+type Optionals
+    = Requesting Url
+    | Failed { invalid:Url, previous:Maybe Url }
+    | Parsed { perspectives: List Perspective }
                    
                    
                    
