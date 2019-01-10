@@ -47,7 +47,7 @@ type alias Model =
     , local: Local
     , key: Navigation.Key
     }
-
+    
 init : () -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
@@ -63,8 +63,8 @@ init flags url key =
             , databaseRequest
         )
 
-    
----- ERRORS ----
+--- INTERFACE --------------------------------------------------------
+--- ERRORS ----
 
 type Error
     = UrlError String

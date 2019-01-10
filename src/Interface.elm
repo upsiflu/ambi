@@ -1,15 +1,12 @@
 module Interface exposing ( Skeleton, Location (..) )
 
 
+import Stack
+
 import Html exposing ( a as anchor, button, span )
 import Html.Attributes exposing ( class, href )
 import Html.Events exposing ( onClick )
-
--- This module provides a limited structure for SPAs.
--- It only accepts passive view functions so you have to specify
--- any interactivity through Interface's presets.
--- This module contains no state. The browser is handling the tabstop thing, I guess...
--- That is true if we decide to never change the tabIndex of anything.
+import Html.Extra exposing (static)
 
 
 
@@ -25,12 +22,100 @@ import Html.Events exposing ( onClick )
 
 
 
-type Skeleton key msg
-    = Skeleton
-        { prologue: Prologue
-        , items: Items k msg
-        , epilogue: Epilogue
-        , meta: Meta }
+{----------------------------------------------------------------
+    
+    Interface
+    
+    provides defaults and boundaries for SPAs.
+    An interface is a Constant that is fed lazy lookup
+    functions for any data that may change. So you have to
+    be explicit about mutability.
+
+    In the current implementation, prologue and epilogue are
+    static HTML.
+
+
+ -- keys and Items
+ 
+    Every item is referred to by its key. A stack of keys can
+    be reconstructed using the getPath function.
+
+    An Item is its key.
+
+ -- Talking to an Interface
+
+    All aspects of an interface are either immutable
+    or functions. To draw items, provide functions that accept
+    stacks of keys. You can manage your own dicts.
+
+    The window and the focus will be evaluated on each view.
+
+ -- Wiring
+
+    In your init, you have to provide all typical navigation
+    messages so that the Interface can put them into your Html.
+
+    The navigation messages are conceptually separate from the
+    application-specific "actions" that you build your buttons
+    with, or the hrefs you can use in links.
+
+ ----------------------------------------------------------------}
+
+
+
+type alias Interface key action msg =
+    { prologue: Static
+    , epilogue: Static
+    , meta: Static
+    --------------------------------------------------
+    , drawPassiveItem: Stack key -> Static
+    , drawInteractiveItem: Stack key -> TabRing action
+    , getChildKeys: Stack key -> List key
+    --------------------------------------------------
+    , dismiss: msg
+    , focus: msg
+    , blur: msg
+    , meta: msg
+    , context: msg
+    --------------------------------------------------
+    , windowKey: () -> Stack key
+    , focusSteps: () -> List key
+    }
+
+type alias Static = Html Never
+
+type alias Item key =
+    key
+
+
+view : Interface key action msg -> Html msg
+view interface =
+    let
+        viewPrologue = static interface.prologue
+        viewEpilogue = static interface.epilogue
+
+
+        window : Stack key
+        window = interface.windowKey ()
+
+        focus : List key
+        focus = interface.focusSteps ()
+
+        
+        viewItems =
+            window
+            |> PassiveItem
+            |> Tree.build ( window |> interface.getChildKeys |> map PassiveItem )
+            |> Zipper.fromTree
+            |> Zipper.openPath (==) focus
+            
+
+
+
+
+
+
+
 
 
 
@@ -45,11 +130,6 @@ type alias Interactive = Interactive Prologue Items Epilogue Meta Drawer Navigat
 
 
 
-
-type alias Prologue = Html Never
-type alias Items k msg = Zipper ( Item k msg )
-type alias Epilogue = Html Never
-type alias Meta = { closed: Html Never }
 
 
 type alias Drawer k = k -> List (Html Never)
