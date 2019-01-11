@@ -141,70 +141,9 @@ update msg model =
 ---- VIEW ----
 
 
-view : Model -> Html Msg
 view { me, route, site, local, interface, key } =
-    
-    let
-        getRoute : Interface.Meta -> Interface
-        getRoute =
-            case route of
-             
-                Route.Requesting url ->
-                    Url.toString url |> text
-            
-                Route.Failed { invalid, previous } ->
-                    
-                    div [] 
-                        [ Url.toString invalid |> text
-                    
-                        , case previous of
-                           
-                            Nothing -> 
-                                text " --- Try changing the address."
-                    
-                            Just url ->
-                                span []
-                                     [ text "previous was: ", Url.toString invalid |> text ]
-                        ]
-            
-                Route route ->
-                    viewSite route
-        
-        withSite { location, window, focus } =
-            case site of
-                    
-                Site.Loading _ -> 
-                    h2 [] [text "site is loading (Route.view)"]
-                        
-                Site.Failed _ -> 
-                    h2 [] [text "site loading failed (Route.view)"]
-                        
-                Site cache -> 
-                    case Site.copy location cache of
-                                
-                        Nothing ->
-                            text "The site you requested was loaded but then lost from your local memory. Refresh your browser."
-                                
-
-                        Just { app, basis, sessions } ->
-                        
-                            Interface.draw
-                            
-                                { prologue:         -- first entry to items; horizontal movement is possible.
-                                , entries: BiZipper ( Entry k a )        -- vertical and horizontal movement.
-                                , epilogue: { view: Viewer }
-                                , meta: Maybe ( Meta k a )
-                                , changer: k -> a -> msg
-                                }
-                            
-                            
-                            
--------------------------------------------------------------------------------------------------------------------------------
-                                
-   in
     { title = "tangible 0.0.9"
     , body = interface.view route
-    
     }
 
 

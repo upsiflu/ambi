@@ -33,7 +33,7 @@ import Url exposing (Url)
 
 
 
-{----------------------------------------------------------------
+{-
     
     Interface
     
@@ -53,13 +53,15 @@ import Url exposing (Url)
 
     An Item is its key.
 
- -- Talking to an Interface
+ 
+-- Talking to an Interface
 
     All aspects of an interface are either immutable
     or functions. To draw items, provide functions that accept
     stacks of keys. You can manage your own dicts.
 
     The window and the focus will be evaluated on each view.
+
 
  -- Wiring
 
@@ -70,28 +72,33 @@ import Url exposing (Url)
     application-specific "actions" that you build your buttons
     with, or the hrefs you can use in links.
 
- ----------------------------------------------------------------}
+ -}
 
 
 
-type alias Interface key route nav action msg =
+type alias Interface key data route nav action msg =
 
-    { prologue: route -> Static
-    , epilogue: Static
-    , meta: Static
-    --------------------------------------------------
-    , drawPassiveItem: Stack key -> Static
-    , drawInteractiveItem: Stack key -> ActionRing ( Stack key ) action
-    , getChildKeys: Stack key -> List key
+    {
+    -- reading a Url
     , router: route -> Url
-    --------------------------------------------------
-    -- Provide these update functions for internal navigation.
-    , putFocus: Stack key -> nav -- example: onClick ( putFocus stack )
-    , back: nav
-    -- For the active item presentation, you can wire your own messages.
-    --------------------------------------------------
     , windowKeys: route -> Stack key
     , intendedFocus: route -> List key
+    , prologue: route -> Static
+
+    -- items over keys respond to data.
+    , drawPassiveItem: 
+        Stack key -> data -> Static
+    , drawInteractiveItem: 
+        Stack key -> data -> ActionRing ( Stack key ) action
+    , getChildKeys: 
+        Stack key -> data -> List key
+    
+    -- Provide these Messages for internal navigation.
+    , putFocus: Stack key -> nav
+    , back: nav
+    
+    , epilogue: Static
+    , meta: Static
     }
 
 
@@ -152,11 +159,11 @@ view interface route =
         asPassiveItem : Stack key -> Item
         asPassiveItem = ( withNavigation drawPassiveItem ) >> Passive
 
-        asInteractiveItem : Stack key -> Item
+        asInteractiveItem : Stack key -> data -> Item
         asInteractiveItem = drawInteractiveItem >> Interactive
 
-        withNavigation :    ( Stack key -> Static ) -> Stack key ->
-                            ( Stack key -> Html nav )
+        withNavigation : ( Stack key -> data -> Static ) -> Stack key ->
+                         ( Stack key -> data -> Html nav )
         withNavigation draw =
             \k -> li [ interface.putFocus k |> onClick ] [ draw k |> map static ]
             

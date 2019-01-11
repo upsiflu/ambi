@@ -4,7 +4,7 @@ module Route exposing (Route, visit, view)
 import App exposing (Type, Locus, Word, Perspective, neutral)
 import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, <?>, stringParam, top)
 import Url exposing (Url)
-import Site exposing ( showSignature )
+import Site
 
 import Html exposing (h1, text)
 
@@ -93,8 +93,6 @@ new url outgoing =
             { domain: { protocol: url.protocol, host: url.host, port_: url.port_ }
             , location: parse locationParser url.path |> Site.load
             , window: parse windowParser url.path
-            , watch:
-            , perspectives:
             , focus: parse windowParser url.fragment
             }
         question = encodeQuestion...
@@ -106,36 +104,15 @@ new url outgoing =
 getDomain url = { protocol: url.protocol, host: url.host, port_: url.port_ }
 
 visit : Url -> ( Value -> Cmd msg ) -> Maybe Route -> ( Route, Cmd msg )
-visit url outgoing oldRoute =
-    case oldRoute of
-        Nothing ->
-            new url outgoing
-        
-        Just Requesting Url ->
-            new url outgoing
-        
-        Just Failed { invalid, previous } ->
-            new url outgoing
-        
-        Just Route
-            { domain
-            , location
-            , window
-            , watch
-            , perspectives
-            , focus
-            } as old ->
-            case old of
-                 { o | domain: getDomain url }
-                 
-            
-            case domain of
-                 ->
-                    
-                newDomain ->
-                    new url outgoing
-            
-
+visit url outgoing old =
+    let 
+        new =
+        { domain = getDomain url |> Result.withDefault old.domain
+        , location = parseLocation url |> Result.withDefault old.location
+        , window = parseWindow url |> Result.withDefault old.window
+        , focus = parseFocus url |> Result.withDefault old.focus
+        , optionals = Requesting url
+        }
 
 
 
@@ -143,7 +120,7 @@ visit url outgoing oldRoute =
   let 
       app = map App <| s "tangiblemodel.com" </> string </> t </>
   in
-      parsePath site window mode focus
+      ( new, )
     
     
     
