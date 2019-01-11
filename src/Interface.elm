@@ -1,21 +1,32 @@
-module Interface exposing ( Skeleton, Location (..) )
+
+module Interface exposing
+    -- draw interfaces --
+    ( Interface
+    , view
+    
+    , ActionRing
+    , InteractiveElement
+    , Interactivity (..)
+    , Relative (..)
+
+    -- intercept keys to annotate views --
+    , Indicator
+    , asAnnotator )
 
 
-import Stack
+import List exposing (map)
+
+import Lazy.Tree as Tree
+import Lazy.LList as LList
+import Lazy.Tree.Zipper as Zipper
+import Stack exposing ( top, push, toList )
 
 import Html exposing ( a as anchor, button, span )
 import Html.Attributes exposing ( class, href )
 import Html.Events exposing ( onClick )
 import Html.Extra exposing (static)
 
-
-
-
-
-
-
-
-
+import Url exposing (Url)
 
 
 
@@ -63,248 +74,183 @@ import Html.Extra exposing (static)
 
 
 
-type alias Interface key action msg =
-    { prologue: Static
+type alias Interface key route nav action msg =
+
+    { prologue: route -> Static
     , epilogue: Static
     , meta: Static
     --------------------------------------------------
     , drawPassiveItem: Stack key -> Static
-    , drawInteractiveItem: Stack key -> TabRing action
+    , drawInteractiveItem: Stack key -> ActionRing ( Stack key ) action
     , getChildKeys: Stack key -> List key
+    , router: route -> Url
     --------------------------------------------------
-    , dismiss: msg
-    , focus: msg
-    , blur: msg
-    , meta: msg
-    , context: msg
+    -- Provide these update functions for internal navigation.
+    , putFocus: Stack key -> nav -- example: onClick ( putFocus stack )
+    , back: nav
+    -- For the active item presentation, you can wire your own messages.
     --------------------------------------------------
-    , windowKey: () -> Stack key
-    , focusSteps: () -> List key
+    , windowKeys: route -> Stack key
+    , intendedFocus: route -> List key
     }
 
-type alias Static = Html Never
-
-type alias Item key =
-    key
 
 
-view : Interface key action msg -> Html msg
-view interface =
-    let
-        viewPrologue = static interface.prologue
-        viewEpilogue = static interface.epilogue
-
-
-        window : Stack key
-        window = interface.windowKey ()
-
-        focus : List key
-        focus = interface.focusSteps ()
-
-        
-        viewItems =
-            window
-            |> PassiveItem
-            |> Tree.build ( window |> interface.getChildKeys |> map PassiveItem )
-            |> Zipper.fromTree
-            |> Zipper.openPath (==) focus
-            
+type alias Static = [ Html Never ]
 
 
 
+type Item keys action
+    = Interactive ( ActionRing keys action )
+    | Passive Static
 
+type alias ActionRing keys action =
+    Ring ( InteractiveElement keys action )
 
+type alias InteractiveElement route keys action =
+    { interactivity: Interactivity route keys action
+    , representation: Static }
 
+type Interactivity route keys action
+    = Button action
+    | Link { target: route, description: String }
+    | ChangeFocus ( Relative keys )
 
-
-
-
-
-
-type Interface
-    = D Drawable
-    | I Interactive
-
-type alias Drawable = Prologue Items Epilogue Meta Drawer
-type alias Interactive = Interactive Prologue Items Epilogue Meta Drawer Navigator Interactor
-
-
-
-
-
-type alias Drawer k = k -> List (Html Never)
-type Interactor k msg = Interactor (k -> List ( Html msg ))
-type alias Navigator msg =
-                { dismiss: msg
-                , focus: msg
-                , blur: msg
-                , meta: msg
-                , context: msg }
-
-type alias Indicator = key -> String
-
-
-type alias Item k msg =
-    --{ controls: Ring ( { action: Action msg, drawer: Drawer k } )}
-
-type Action k a
-    = Button a
-    | Link { target: k, description: String }
-    | Control (UI k)
-
-type UI k
-    = Self k
-    | Cancel k
-    | Ok k
-    | Dismiss k
+type Relative keys
+    = Self keys
+    | Cancel
+    | Ok
+    | Dismiss
     | Back
 
 
 
 
+------------------------------------------------------------------------------
 
--------------------- Exposed functions ----------------------------------
+--The view of an interface only depends on the route (TODO: and the me).
 
-asAnnotator : Indicator -> Drawer -> Drawer
-asAnnotator indicator drawer
-    = ( \key -> [ span [ class ( indicator key ) ] ( drawer key ) ] )
-    
-
-
----------------------- Populate an Interface ----------------------------
-
-draw : Skeleton k msg -> Drawer -> Interface k msg
-draw (Skeleton base) dra =
-    D { base | drawer = dra }
-
-wire : Interface k msg -> Navigator k msg -> Interactor k msg -> Interface k msg
-wire i nav int = 
-    case i of
-        D drawable ->
-            I { drawable | navigator = nav, interactor = int }
-        I interactive -> I
-            { interactive | navigator = nav, interactor = int }
-
-view : Interface k msg -> Html msg
-view i =
-
+view : Interface key route nav action msg -> route -> Html msg
+view interface route =
     let
+        -- Evaluate lazy variables
+        window : Stack key
+        window = route |> interface.windowKeys
+        focus : List key
+        focusSteps = route |> interface.intendedFocus
 
-        ----------- LAYOUT -----------------------------------
+        viewPrologue = static interface.prologue
+        viewEpilogue = static interface.epilogue
+        viewMeta = static interface.meta
 
-        drawPage =
-            biPrepend i.prologue i.entries
-                |> biFlattenFocus drawEntryFocus drawEntry
+        -- Decompose the zipper
+        childStacks : Stack key -> Stack key
+        childStacks stack =
+            interface.getChildKeys stack
+            |> map ( \key -> push key stack )
+    
+        asPassiveItem : Stack key -> Item
+        asPassiveItem = ( withNavigation drawPassiveItem ) >> Passive
 
-        drawEpilogue =
-            i.epilogue.view mode
+        asInteractiveItem : Stack key -> Item
+        asInteractiveItem = drawInteractiveItem >> Interactive
 
-        drawMeta =
-            case i.meta of
-                Nothing |> []
-                _ |> []
+        withNavigation :    ( Stack key -> Static ) -> Stack key ->
+                            ( Stack key -> Html nav )
+        withNavigation draw =
+            \k -> li [ interface.putFocus k |> onClick ] [ draw k |> map static ]
+            
 
+        viewWindow : Html msg
+        viewWindow =
+            window                                              -- top item
+            |> Tree.build childStacks                           -- Tree
+            |> Zipper.fromTree                                  -- Zipper ( keys )
+            |> Zipper.openPath ( \s k -> s == top k ) steps     -- walk to focus
+            |> distinguishFocus asInteractiveItem asPassiveItem -- evaluate item kind 
+            |> root |> getTree |> viewTree                      -- fold to Html
 
-        ------------ VIEWS -----------------------------------
-
-        drawFocus focused = 
-            ringList focused.tabstops |> List.map drawTabstop
-
-        drawEntry entry =
-            -- todo: context menu etc
-            ringPrimary entry.tabstops |> ringCurrent |> drawTabstop 
-
-        drawTabstop
-            { primaryAction
-            , contextAction
-            , view
-            , secondaryZipper
-            } =
-                case primaryAction of
-                    
-                    Button msg ->
-                        button [ onClick msg ] [ view mode ]
-                    Link target description ->
-                        anchor [ href target ] [ description ]
-                    Control ui ->
-                        case ui of
-                            Self ->   anchor [ class "self", i.self |> href ] [ view mode ]
-                            Cancel -> anchor [ class "cancel", i.cancel |> withDefault i.leave |> href ] [ view mode ]
-                            OK ->     anchor [ class "ok", i.leave |> withDefault i.back |> href ] [ text "OK" ]
-                            Back ->   anchor [ class "back", i.back |> withDefault i.leave |> href ] [ text "<" ]
+        viewTree : Tree -> Html msg
+        viewTree tree =
+            Tree.descendants tree |> LL.map viewTree |> viewItem ( Tree.item tree )
+        
+        viewItem : Item -> ( LList Item ) -> Html msg
+        viewItem item children =
+            let current =
+                case item of
+                    Passive content -> static content
+                    Interactive actionRing ->
+                        ringList actionRing |> List.map viewElement
+        
+        viewElement : InteractiveElement route key action |> Html action 
+        viewElement { interactivity, representation } =
+            case interactivity of
+                Button action ->
+                    button
+                        [ onClick action ] representation
+                Link target description ->
+                    anchor
+                        [ href ( interface.router target ) ]
+                        [ text description ]
+                ChangeFocus relation ->
+                    case relation of
+                        Self k ->
+                            anchor
+                                [ class "self", interface.putFocus k |> href ]
+                                [ text "#" ]
+                        Cancel ->
+                            anchor
+                                [ class "cancel", interface.back |> href ]
+                                [ text "cancel" ]
+                        OK ->       
+                            anchor
+                                [ class "ok", interface.back |> href ]
+                                [ text "OK" ]
+                        Dismiss ->
+                            anchor
+                                [ class "dismiss", interface.back |> href ]
+                                [ text "v" ]
+                        Back ->
+                            anchor
+                                [ class "back", interface.back |> href ]
+                                [ text "<" ]
 
     in
-        drawPage ++ drawEpilogue ++ drawMeta
+        viewPrologue :: viewWindow :: viewEpilogue :: viewMeta :: []
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Exposed functions
+
+type alias Indicator keys = keys -> String
+
+asAnnotator : Indicator keys -> ( keys -> Static ) -> ( keys -> Static )
+asAnnotator indicator drawer
+    = ( \key -> [ span [ class ( indicator keys ) ] ( drawer keys ) ] )
+    
 
 
 
 ------------ STRUCTURES -------------------------------------------------------
 
+-- Type helpers
 
-
-
-
-
-
-
-
-
-
--- Binary Zipper is for arrow key navigation.
-
-type alias BiZipper a =
-    { up: List (Zipper a)
-    , horizontal: Zipper a
-    , down: List (Zipper a)
-    }
-
-type alias Zipper a =
-    { left: List a
-    , current: a,
-    , right: List a
-    }
-
-down b =
-    case b.down of
-        []    -> b
-        [dow::n] ->
-            { up = b.horizontal :: b.up
-            , horizontal = dow
-            , down = n
-            }
-
-up b =
-    case b.up of
-        []    -> b
-        [u::p] ->
-            { up = p
-            , horizontal = u
-            , down = b.horizontal :: b.down
-            }
-
-current b =
-    b.horizontal.current
-
-mapHorizontal fu h = mapHorizontalFocus fu fu h
-
-mapHorizontalFocus focusFu fu h =
-    ( List.map fu h.left )   ++ 
-    [ focusFu <| h.current ] ++
-    ( List.map fu h.right )
-
-biPrepend : Zipper a -> BiZipper a -> BiZipper a
-biPrepend pre::pend =
-    { pend | up = pend.up ++ [pre] }
-
-biFlattenFocus : (a -> b) -> (a -> b) -> BiZipper a -> List b
-biFlattenFocus biz focusFu fu =
-    ( List.map (mapHorizontal fu) biz.up ) ++
-    ( mapHorizontalFocus focusFu fu biz.horizontal ) ++ 
-    ( List.map (mapHorizontal fu) biz.down )
-
-
-
+distinguishFocus : ( i -> a ) -> ( i -> a ) -> Zipper i -> Zipper a
+distinguishFocus focusfu nofu zipper =
+    let newFocusedItem = Zipper.current zipper |> focusfu
+    in Zipper.map nofu zipper |> Zipper.updateItem ( always newFocusedItem )
 
 
 -- Ring is for Tabstops --
@@ -340,3 +286,6 @@ ringCurrent r =
 ringList : Ring a -> List b
 ringList r =
     Array.toList r.slots
+
+ringMap : ( a -> b ) -> Ring a -> Ring b
+ringMap fu a =

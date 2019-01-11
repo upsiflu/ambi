@@ -69,8 +69,11 @@ type Signed = Signed -- Tag used for all Sites.
 type alias Signature = -- Tag specific to one Site.
     Tagged Signed Token
 
-type alias Token =
-    { curator: Avatar.Token, app: App.Token }
+showSignature : Signature -> String
+showSignature = { curator, app } -> curator++" / "++app
+
+type alias Token = -- Tokens can only be created by the Site. As can apps.
+    { creator: String, app: String } -- Creators may vanish, their sites live on.
 
 type alias Cache =
     Tagged.Dict Signed Token Copy -- A Dict for Token -> Copy, but with keys that are minted by Site.

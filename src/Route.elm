@@ -1,10 +1,12 @@
 module Route exposing (Route, visit, view)
 
+
 import App exposing (Type, Locus, Word, Perspective, neutral)
 import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, <?>, stringParam, top)
 import Url exposing (Url)
-import Site exposing (viewSite, viewFocus)
+import Site exposing ( showSignature )
 
+import Html exposing (h1, text)
 
 
 
@@ -51,7 +53,7 @@ import Site exposing (viewSite, viewFocus)
 
 type alias Route =
     { domain: { protocol: Protocol, host: String, port_: Maybe Int  }
-    , location: Site
+    , location: Site.Signature
     , window: Locus                      -- /
     , focus: Locus                       -- #
     , optionals: Optionals               -- this is not always given.
@@ -156,3 +158,11 @@ routeParser : Parser (Route -> a) a
 routeParser =
     oneOf
         [map .... ( WINDOW <?> stringParam "review")]
+
+
+----------------------------------------------------------------
+
+-- VIEW
+
+viewPrologue : Route -> Html Never
+viewPrologue route = route.location |> text Site.showSignature |> h1 []

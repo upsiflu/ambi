@@ -1,3 +1,4 @@
+
 port module Main exposing (..)
 
 import Browser.Navigation as Navigation
@@ -8,6 +9,7 @@ import Me exposing (Me, nobody)
 import Route exposing (visit, view)
 import Json.Decode exposing (Value)
 
+import Stack exposing ( push, pop )
 
 
 
@@ -23,21 +25,17 @@ import Json.Decode exposing (Value)
 
 
 
-
-{----------------------------------------------------------------
+{-
     
     Main
     
-    generates a runtime.
-    All state is encoded here:
-    
-  * Route shadows the state of the URL bar
-  * Me ...?
-  * Site shadows the database document for the given site
-
-    Go here for view and update.
-    
- ----------------------------------------------------------------}
+  * curator shadows the auth, user and avatar provided by the js system
+  * route shadows the state of the URL bar
+  * site shadows the database document for the given site
+  * local knows which data is in sync between the local js and the database
+  * interface is the immutable configuration (wiring) between data and view
+  
+ -}
     
 
 type alias Model =
@@ -45,32 +43,56 @@ type alias Model =
     , route: Route
     , site: Site
     , local: Local
+    , interface: Interface
     , key: Navigation.Key
     }
-    
+
+
+
 init : () -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
-        ( route, databaseRequest )
+        ( initialRoute, initialDatabaseRequest )
             = Route.visit url
+
+        withSyncIndications : ( Locus -> Html Never ) -> ( Locus -> Html Never )
+        withSyncIndications =
+            ( Local.syncStateIndicator local ) |> Interface.asAnnotator
+
+
+        initialInterface =
+
+            { prologue = Route.viewPrologue
+            , epilogue = Route.viewEpilogue 
+            , meta = Me.viewMeta
+            --------------------------------------------------
+            , drawPassiveItem = Kind.drawPassiveItem >> withSyncIndications
+            , drawInteractiveItem = Kind.drawInteractiveItem >> withSyncIndications
+            , getChildKeys = App.getChildSteps
+            , router = Route.toUrl
+            --------------------------------------------------
+            , putFocus = PutFocus
+            , back = Back
+            --------------------------------------------------
+            , windowKeys = Route.window
+            , intendedFocus = Route.focus
+            }
+
     in
         (
-            { route: route
-            , curator: Me.nobody
-            , site: Site.loading route.location 
-            , key: key
+            { curator = Me.nobody
+            , route = initialRoute
+            , site = Site.loading route.location 
+            , local = Local.
+            , interface = initialInterface
+            , key = key
             }
-            , databaseRequest
+            
+            , initialDatabaseRequest 
         )
 
---- INTERFACE --------------------------------------------------------
---- ERRORS ----
 
-type Error
-    = UrlError String
-    | 
-    
-    
+        
 ---- UPDATE ----
 
 
@@ -92,9 +114,8 @@ type Msg
     | Decide Locus
 
     --- UI
-    | Dismiss Locus
-    | Focus Locus
-    | Blur Locus
+    | PutFocus Locus
+    | Back
 
 
 port incoming : ( Value -> msg ) -> Sub msg
@@ -121,69 +142,11 @@ update msg model =
 
 
 view : Model -> Html Msg
-view { me, route, site, local } =
+view { me, route, site, local, interface, key } =
     
     let
-        navigator =
-            Interface.Navigator
-                { dismiss: Dismiss
-                , focus: Focus
-                , blur: Blur
-                , meta: Menu
-                , context: Context }
-
-        editor =
-            Kind.editor
-                { discuss: Discuss
-                , input: Input
-                , append: Append
-                , remove: Remove }
-        
-        items : Zipper Interface.Item
-        items =
-            route
-            |> Route.siteToken >> Site.copy
-            |> Result.map .app                                 
-
-            |> Result.Extra.extract App.siteErrorReporter -- An App that displays the site errors. Site error must include the erred site.
-            |> App.skip route.window 
-            |> App.walk route.focus
-
-            |> Zipper.map ( Kind.fromApp >> Kind.toItem )
-            
-
-        withSyncIndications : Interface.Drawer -> Interface.Drawer
-        withSyncIndications =
-            local
-            |> Local.syncStateIndicator
-            |> Interface.asAnnotator
-
-
-    in
-        Interface.Skeleton
-            Me.draw
-            Route.prologue
-            items
-            epilogue                                                   -- -> invisible skeleton
-            
-            |> Interface.draw ( Kind.drawer |> withSyncIndications )   -- -> static data view
-            |> Interface.wire navigator editor                         -- -> interactive interface
-            |> Interface.view                                          -- -> Html
-
-
-
-    let 
-        me : Interface.Meta Locus msg
-        = case Me of
-             Nobody ->
-                { closed: always ( Html.static ( text "me, ta: Nobody." ) ) }
-             _      ->
-                { closed: always ( Html.static ( text "me, ta: Somebody." ) ) }
-
--------------------------------------------------------------------------------------------------------------------------------
-
-        withRoute : Interface.Meta -> Interface
-        withRoute =
+        getRoute : Interface.Meta -> Interface
+        getRoute =
             case route of
              
                 Route.Requesting url ->
@@ -240,7 +203,7 @@ view { me, route, site, local } =
                                 
    in
     { title = "tangible 0.0.9"
-    , body = viewSite
+    , body = interface.view route
     
     }
 
