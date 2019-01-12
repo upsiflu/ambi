@@ -12,6 +12,102 @@ As of now, this prototype is not working yet and needs a lot of work.
 
 The interpreter is intended to showcase the ability of Ambilang to bridge the domains of dance and information processing.
 
+# Layout
+
+
+General tenets in the structuring of this app
+
+These modules are represented in the database as a doc type:
+
+'''
+┭╴User          -- bound to a certain auth (eMail address, Google accout etc.).
+├╴Avatar        -- a collective of users who curate their sites.
+╰╴Site          -- avatar/app, where app is a free to choose name.
+  ╰╴Version     -- a milestone that includes a limited set of sessions.
+    ╰╴Session   -- bound to a user and a unique log-in time. Closed on log-out.
+                -- a user can have concurrent sessions on parallel tabs or devices.
+'''
+
+Firebase creates automatic ids optimized for distributed retrieval. They are not sequential nor ordered, so for Nominals (sorted session identifiers) we use timestamps, and for Ordinals (sequencial integers identifying edits in a specific locus) we use in-client generated sequential integers because they are kept within one session and one session is kept within one browser.
+
+'''
+┭╴User
+├╴Avatar
+╰╴Site╶╮
+       │
+╭ ttt ─┴─────────────╮
+│                    │
+│ created: 000000    │
+│                    │ 
+│ creator: aa        │ 
+│ curator: Avatar/aa │ 
+│ app: x y z ...     │ 
+│ public: 000005     │ Versions are referred to via their timestamp.
+│ draft: 000008      │ Draft is a normal version that is not public.
+│                    │ 
+│ datacopy:          │ A readonly access does not need to download any version
+│  x+                │ because the result is stored here.
+│  xy!m              │ 
+│                    │ 
+╰┬───────────────────╯
+ │
+ ╰╴Version╶╮
+           │
+╭ vvv ─────┴─────────╮
+│                    │
+│ created: 000006    │
+│                    │ 
+│ previous: 000005   │ 
+│ sessions:          │ 
+│  sss               │ 
+│                    │ 
+│ datacopy:          │ If you work on a draft, you don't need to download
+│  xyz=n             │ all previous versions as their result is stored here.
+│                    │ 
+╰┬───────────────────╯
+ │
+ ╰╴Session╶╮
+           │
+╭ vvv ─────┴─────────╮
+│                    │
+│ created: 0002      │
+│                    │ 
+│ contact: a@b.c     │ 
+│                    │
+│ edits:             │
+│  xy:               │
+│ { 0, !mno }        │  Ordinal: int starting at 0, in their own field to allow sorting. 
+│ { 1, =p }          │  Nominals are timestamps. An empty nominal denotes 'me'.
+│ { 1, 0007=p }      │  This edit is responding to session 0007.
+│                    │ 
+│  xyz:              │
+│ { 0, + }           │ 
+│ { 1, u }           │  u[ndo] can't appear after a nominal.
+│ { 5, 0007+ }       │
+│                    │
+│ discussions:       │
+│  xy: ...           │  this format is not yet specified.
+│                    │ 
+╰────────────────────╯
+'''
+
+
+
+
+
+
+
+
+
+
+250x	─	━	│	┃	┄	┅	┆	┇	┈	┉	┊	┋	┌	┍	┎	┏
+U+251x	┐	┑	┒	┓	└	┕	┖	┗	┘	┙	┚	┛	├	┝	┞	┟
+U+252x	┠	┡	┢	┣	┤	┥	┦	┧	┨	┩	┪	┫	┬	┭	┮	┯
+U+253x	┰	┱	┲	┳	┴	┵	┶	┷	┸	┹	┺	┻	┼	┽	┾	┿
+U+254x	╀	╁	╂	╃	╄	╅	╆	╇	╈	╉	╊	╋	╌	╍	╎	╏
+U+255x	═	║	╒	╓	╔	╕	╖	╗	╘	╙	╚	╛	╜	╝	╞	╟
+U+256x	╠	╡	╢	╣	╤	╥	╦	╧	╨	╩	╪	╫	╬	╭	╮	╯
+U+257x	╰	╱	╲	╳	╴	╵	╶	╷	╸	╹	╺	╻	╼	╽	╾	╿
 
 
 
