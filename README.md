@@ -19,18 +19,18 @@ General tenets in the structuring of this app
 
 These modules are represented in the database as a doc type:
 
-'''
+```
 ┭╴User          -- bound to a certain auth (eMail address, Google accout etc.).
 ├╴Avatar        -- a collective of users who curate their sites.
 ╰╴Site          -- avatar/app, where app is a free to choose name.
   ╰╴Version     -- a milestone that includes a limited set of sessions.
     ╰╴Session   -- bound to a user and a unique log-in time. Closed on log-out.
                 -- a user can have concurrent sessions on parallel tabs or devices.
-'''
+```
 
 Firebase creates automatic ids optimized for distributed retrieval. They are not sequential nor ordered, so for Nominals (sorted session identifiers) we use timestamps, and for Ordinals (sequencial integers identifying edits in a specific locus) we use in-client generated sequential integers because they are kept within one session and one session is kept within one browser.
 
-'''
+```
 ┭╴User
 ├╴Avatar
 ╰╴Site╶╮
@@ -89,7 +89,7 @@ Firebase creates automatic ids optimized for distributed retrieval. They are not
 │  xy: ...           │  this format is not yet specified.
 │                    │ 
 ╰────────────────────╯
-'''
+```
 
 
 
