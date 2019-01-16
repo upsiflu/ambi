@@ -1,8 +1,8 @@
-module App exposing (App, Leaf, Variation, Alternation, Definition, Parameters, encodeConcept)
+module App exposing (App, getChildSteps, initialApp, encodeWord, getString )
 
 import List
-import Lazy.Tree as Tree exposing (Tree(..), Forest)
-import Lazy.Tree.Zipper as Zipper exposing (Zipper, current, fromTree, children, root, openAll)
+import Lazy.Tree as Tree exposing (..)
+import Lazy.Tree.Zipper as Zipper exposing (..)
 
 
 
@@ -61,6 +61,41 @@ type alias App
 type alias Group
     = Forest Word
 
+
+getFakeData : List Word -> App -> String
+getFakeData = ( \steps app -> getApp steps app |> current |> encodeWord )
+
+
+
+
+getApp : List Word -> App -> App
+getApp tocus app = attemptOpenPath ( \word w -> word == w ) tocus app
+getString tocus app = getApp tocus app |> current |> encodeWord 
+
+getChildSteps tocus app = getApp tocus app |> Zipper.children
+
+
+
+
+getChildren ( FakeApp ( w, c ) ) = c
+getWord ( FakeApp ( w, c ) ) = w
+
+type FakeApp = FakeApp ( Word, List FakeApp )
+fakeApp : FakeApp
+fakeApp =
+    FakeApp ( Naming ( Concept "Ppp"),
+        [ FakeApp ( Naming ( Concept "Beta"), [] )
+        , FakeApp ( Naming ( Concept "Ceta"), [] )
+        , FakeApp ( Naming ( Concept "Deta"), [] )
+        , FakeApp ( Naming ( Concept "Eta"), 
+            [ FakeApp ( Naming ( Concept "End of Story"), [] )
+            , FakeApp ( Naming ( Concept "Other leaf"), [] )
+            ] ) 
+        , FakeApp ( Naming ( Concept "Feta"), [] ) 
+        ] 
+    )  
+initialApp : App
+initialApp = fakeApp |> build getChildren |> fromTree |> Zipper.map getWord
     
     
 type Word
@@ -73,45 +108,11 @@ type Relation
 type Concept
     = Concept String
   
+type alias Tocus = List Word
 
+neutral : Tocus
+neutral = []
 
-  
-type Tocus = Tocus (List Word)
-
-
-
-reverse (Tocus ww) = Tocus (List.reverse ww)
-
-neutral = Tocus []
-
-
-
-
--- Two distinct group types, depending on their parent:
-type Definition = Definition Group
-type Parameters = Parameters Group
-
-
-
-
-
-
-
-
-
-
-
--- the only way to construct a Definition is to find it:
-definition : App -> Concept -> Definition
-definition t concept =
-    let
-        asDefinition = Definition
-        wantedWord = Naming concept
-    in case current t of
-        wantedWord -> children t |> asDefinition
-        
-
-type Leaf = Leaf
 
 
         
@@ -159,12 +160,10 @@ type Leaf = Leaf
 
 
 type Definition = D Group
-type Multidefinition = DD Multiple Group
-type alias DefinitionChoice = Branch Multidefinition 
+type Multidefinition = DD ( Multiple Group )
     
 type Prototype = P Group
-type Multiprototype = PP Multiple Group
-type alias PrototypeChoice = Branch Multiprotptype
+type Multiprototype = PP ( Multiple Group )
 
 type Branch context = Branch Group -- a phantom type.
 
@@ -180,82 +179,9 @@ type Multiple a
 -- ENCODING --
     
 encodeConcept ( Concept string ) = string
+
 encodeWord word =
     case word of
          Symbolizing More -> "+"
          Naming (Concept string) -> string
          
-    
-{----------------------------------------------------------------
-    
-    Constructing an App from a String
-    
-    The database stores the app in the standard UTF-8 format.
-
- ----------------------------------------------------------------}
-
-https://ellie-app.com/4nBvVtFpCS6a1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-lines s 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-initial : App
-initial =
-  let
-      getChildren  (Data i c) = c
-      getSymbol    (Data i c) = i
-  in
-    Data (Name "flupsicom")
-            [ Data Many
-              [ Data (Name "topic")
-                [ Data (Generate Title) []
-                , Data Many [ Data (Generate Caption) [] ]
-                , Data Many [ Data (Generate Emblem)
-                                   [ Data Many [ Data (Generate Paragraph) [ Data (Generate Text) [] ] ] ] ]
-                , Data Many [ Data (Generate Paragraph)
-                              [ Data Many [ Data (Generate Text) [] ]
-                              , Data Many [ Data (Generate Link) [] ]
-                              ] ] ] ] ]
-    |> Tree.build getChildren  |> Tree.map getSymbol |> Zipper.fromTree

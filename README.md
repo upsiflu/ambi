@@ -70,14 +70,14 @@ Firebase creates automatic ids optimized for distributed retrieval. They are not
            │
 ╭ vvv ─────┴─────────╮
 │                    │
-│ created: 0002      │
+│ created: 0002      │  doubles as Nominal for 'this' session (see below).
 │                    │ 
 │ contact: a@b.c     │ 
 │                    │
 │ edits:             │
 │  xy:               │
 │ { 0, !mno }        │  Ordinal: int starting at 0, in their own field to allow sorting. 
-│ { 1, =p }          │  Nominals are timestamps. An empty nominal denotes 'me'.
+│ { 1, =p }          │  Nominals are timestamps. An empty nominal denotes 'this'.
 │ { 1, 0007=p }      │  This edit is responding to session 0007.
 │                    │ 
 │  xyz:              │

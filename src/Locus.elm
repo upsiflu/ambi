@@ -45,15 +45,16 @@ import App exposing (encodeConcept, encodeWord)
     Example:
     
     a                      -- passive concept; not listed.
-     b      -- a/b         -- editable item
+     b      -- ab          -- editable.
      c                     -- passive concept; not listed.
-      d     -- a/c/d       -- actionable: +
+      d     -- ac/d        -- actionable: +
        +                   -- relation; not listed.
-        e   -- a/c/d/0.0.0 -- editable item.
+        e   -- ac/d/0.0.0  -- editable; removable.
        +
-        f
+        f   -- ac/d/1.0.0  -- removable.
+         g  -- ac/d/1.0.0/g-- editable.
       d
-       g
+       g    -- ac/d/g      -- editable.
 
  ----------------------------------------------------------------}
 
@@ -61,19 +62,6 @@ import App exposing (encodeConcept, encodeWord)
 
 type Locus = Locus (List Step)
 type Step  = L Leaf | E Edit.Signature | P Perspective
-
-
-lociBefore : Locus -> Locus -> List Locus
-lociBefore pivot window =
-
-lociAfter : Locus -> Locus -> List Locus
-lociAfter pivot window =
-
-type Role =
-    
-
-role : App -> Locus -> Role
-role app locus=
 
 
 
