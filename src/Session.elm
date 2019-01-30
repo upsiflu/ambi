@@ -61,16 +61,16 @@ type Session
 
 
 
-type Id = Id -- Tag used for all Sessions
+type Signed = Signed -- Tag used for all Sessions
 
 type alias Signature = -- Tag specific to one Session   
-    Tagged Id Token
+    Tagged Signed Token
 
 type alias Token =
     Int
 
 type alias Cache =
-    Tagged.Dict Id Token Copy
+    Tagged.Dict Signed Token Copy
 
     
 

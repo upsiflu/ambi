@@ -1,12 +1,10 @@
-module App exposing (App, getChildSteps, initialApp, encodeWord, getString )
+module App exposing (App, getFirstSteps, initialApp, wordToStep, getString, encodeConcept )
 
-import List
-import Lazy.Tree as Tree exposing (..)
-import Lazy.Tree.Zipper as Zipper exposing (..)
+import Lazy.Tree as Tree exposing ( build, Forest )
+import Lazy.Tree.Zipper as Zipper exposing ( Zipper, openAll, current, fromTree, attemptOpenPath )
+import List exposing ( reverse, map )
 
-
-
-
+import UI exposing ( Stack )
 
 
 
@@ -19,7 +17,9 @@ import Lazy.Tree.Zipper as Zipper exposing (..)
 
 
 
-{----------------------------------------------------------------
+
+
+{-
     
     App
     
@@ -34,8 +34,9 @@ import Lazy.Tree.Zipper as Zipper exposing (..)
  -- Constellations of an App ------------------------------------
     
     Indentations denote parent-child relation,
-    Symbols +, <, >, : denote mappings over children,
-    any other word denotes a concept.
+    Symbols +, <, >, : denote mappings over children;
+    any other word denotes a concept, whereby nested concepts
+    are compressed to one node.
     
     A Group may be tagged Definition or Parameters if it
     appears below a Concept resp. a Relation.
@@ -52,7 +53,7 @@ import Lazy.Tree.Zipper as Zipper exposing (..)
     - A Relation defined with alternating Parameters
       creates Alternatives, giving you a Choice.
 
- ----------------------------------------------------------------}
+ -}
 
  
 type alias App
@@ -60,42 +61,54 @@ type alias App
 
 type alias Group
     = Forest Word
+ 
+type alias Step
+    = String
+
+type alias Locus
+    = Stack Step
+
+getFirstSteps : Locus -> App -> List Step
+getFirstSteps l a =
+    getApp l a |> openAll |> map current |> map wordToStep 
+        
+getString : Locus -> App -> String
+getString l a =
+    getApp l a |> current |> wordToStep 
+
+getApp : Locus -> App -> App
+getApp l app =
+    attemptOpenPath ( \step word -> wordToStep word == step ) ( reverse l ) app
 
 
-getFakeData : List Word -> App -> String
-getFakeData = ( \steps app -> getApp steps app |> current |> encodeWord )
 
+------------------------------------------------------
 
-
-
-getApp : List Word -> App -> App
-getApp tocus app = attemptOpenPath ( \word w -> word == w ) tocus app
-getString tocus app = getApp tocus app |> current |> encodeWord 
-
-getChildSteps tocus app = getApp tocus app |> Zipper.children
-
-
-
-
-getChildren ( FakeApp ( w, c ) ) = c
-getWord ( FakeApp ( w, c ) ) = w
+getFakeData : Locus -> App -> String
+getFakeData = ( \steps app -> getApp steps app |> current |> wordToStep )
 
 type FakeApp = FakeApp ( Word, List FakeApp )
 fakeApp : FakeApp
 fakeApp =
-    FakeApp ( Naming ( Concept "Ppp"),
-        [ FakeApp ( Naming ( Concept "Beta"), [] )
-        , FakeApp ( Naming ( Concept "Ceta"), [] )
-        , FakeApp ( Naming ( Concept "Deta"), [] )
-        , FakeApp ( Naming ( Concept "Eta"), 
-            [ FakeApp ( Naming ( Concept "End of Story"), [] )
-            , FakeApp ( Naming ( Concept "Other leaf"), [] )
+    FakeApp ( Naming ( Concept "Blog"),
+        [ FakeApp ( Naming ( Concept "Title"), [] )
+        , FakeApp ( Naming ( Concept "Introduction Paragraph"), [] )
+        , FakeApp ( Naming ( Concept "Contact"), [] )
+        , FakeApp ( Naming ( Concept "Posts"), 
+            [ FakeApp ( Naming ( Concept "Post 1"), [] )
+            , FakeApp ( Naming ( Concept "Post 2"), [] )
             ] ) 
-        , FakeApp ( Naming ( Concept "Feta"), [] ) 
+        , FakeApp ( Naming ( Concept "Footer Paragraph"), [] ) 
         ] 
-    )  
+    )
+
 initialApp : App
 initialApp = fakeApp |> build getChildren |> fromTree |> Zipper.map getWord
+getChildren ( FakeApp ( w, c ) ) = c |> reverse
+getWord ( FakeApp ( w, c ) ) = w
+    
+--------------------------------------------------------------
+    
     
     
 type Word
@@ -180,7 +193,7 @@ type Multiple a
     
 encodeConcept ( Concept string ) = string
 
-encodeWord word =
+wordToStep word =
     case word of
          Symbolizing More -> "+"
          Naming (Concept string) -> string

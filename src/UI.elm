@@ -19,6 +19,7 @@ module UI exposing
 
 import Debug
 
+import Tuple exposing (first, second, mapFirst, mapSecond)
 import List exposing (map)
 
 import Lazy.Tree as Tree exposing ( Tree )
@@ -53,6 +54,36 @@ import Tagged exposing ( tag )
     static HTML.
 
 
+ -- Semantic Markup
+
+    Html5 introduces semantic elements with precise roles.
+    UI provides Roles to markup individual items. Roles do
+    not directly translate into Html Elements but are
+    interpreted based on context. So depending on where a
+    'Title' appears, it can be the h1 of the document, the
+    h2 of an article or a h3.. of a nested article.
+    Additionally, the role of an item may dictate its
+    order and nesting, as in introductions being merged and
+    enclosed, with title, into a header:
+
+    -- article ---------
+     -- header --------
+         title
+         introductions
+         (autonav)
+     ------------------
+     -- main ----------
+         miscs,
+         lists
+         (in any order)
+     ------------------
+     -- footer --------
+         (autometa)
+     ------------------
+    --------------------
+    
+
+
  -- stack and Items
  
     Every item is referred to by its key. A stack of stack can
@@ -82,25 +113,37 @@ import Tagged exposing ( tag )
  -}
 
 type alias Static = List ( Html Never )
+type alias Wrapper msg = List ( Html msg ) -> Html msg 
 
+-- get a permanent link href to an item.
 type alias Router =
     String -> String
 
+-- get breadcrumbs to an item.
 type alias Keys key state =
     state -> Stack key
 
+-- get multiple single steps.
 type alias Steps key state =
     state -> List key
 
+-- get a static representation.
 type alias Drawer state =
     state -> Static
 
-type alias KeyedDrawer key state =
-    Stack key -> state -> Static
+-- get a static representation
+-- as well as a wrapper for children
+-- for an item
+type alias KeyedDrawer key state msg =
+    Stack key -> state ->
+    ( Static, Maybe ( Wrapper msg ) )
 
+-- get a static representation
+-- as well as a wrapper for children
+-- for an item
 type alias KeyedInteractivator key state msg =
     Stack key -> state ->
-    ActionRing ( Stack key ) msg
+    ( ActionRing ( Stack key ) msg, Maybe ( Wrapper msg ) )
 
 type alias ChildSteps key state =
     Stack key -> state -> List key
@@ -127,7 +170,7 @@ type alias UI key state msg =
     , prologue: Drawer state
 
     -- items over stack respond to state.
-    , drawPassiveItem: KeyedDrawer key state
+    , drawPassiveItem: KeyedDrawer key state msg
     , drawInteractiveItem: KeyedInteractivator key state msg
     , getChildKeys: ChildSteps key state
     
@@ -151,7 +194,7 @@ type alias Readers key state =
 type alias Drawers key state msg =
     {
     -- items over stack respond to state.
-      drawPassiveItem: KeyedDrawer key state
+      drawPassiveItem: KeyedDrawer key state msg
     , drawInteractiveItem: KeyedInteractivator key state msg
     , getChildKeys: ChildSteps key state
     }
@@ -248,15 +291,16 @@ view state ui =
         -- Any passive item doubles as a navigation button to itself
         toPassiveItem : Stack key -> Item state ( Stack key ) msg
         toPassiveItem stack =
-            ( withNavigation ui.drawPassiveItem ) stack
+            ui.drawPassiveItem stack
+            |> mapFirst withNavigation
             |> Passive
-                
+                  
         -- ActionRings are simply wrapped in an Item container
         toInteractiveItem : Stack key -> Item state ( Stack key ) msg
         toInteractiveItem =
             ui.drawInteractiveItem >> Interactive
-
-        -- puts anything in a button leading to itself
+  
+        -- puts anything in a link leading to itself
         withNavigation : ( Stack key -> state -> List ( Html Never ) ) -> 
                          ( Stack key -> state -> List ( Html msg ) )
         withNavigation drawer =
@@ -265,7 +309,7 @@ view state ui =
                 newDrawer stack st =
                     drawer stack st                                  --draw
                     |> List.map static                              --make general
-                    |> button [ ui.putFocus stack |> onClick ]
+                    |> a [ href ( ui.getLink stack ), class "item" ]
                     |> \n -> n :: []
             in
                 newDrawer
@@ -276,7 +320,7 @@ view state ui =
             window                                              -- top item
             |> Tree.build childStacks                           -- Tree
             |> Zipper.fromTree                                  -- Zipper ( stack )
-            |> Zipper.attemptOpenPath ( 
+            |> Zipper.attemptOpenPath (
                     \s stack ->
                     let t = top stack
                     in case t of
@@ -284,14 +328,14 @@ view state ui =
                         Nothing -> False
                 ) steps     -- walk to focus
             |> distinguishFocus toInteractiveItem toPassiveItem -- evaluate item kind 
-        
+         
 
 ---------- VIEWING -----------------------------------------------------------
 
         -- new: we first map the drawFunction, then we take the first 100.
 
         viewWindow = buildWindow |> Zipper.map viewItem
-
+ 
         viewItems = zipperTake maximumRecursionDepth viewWindow |> ul []
         maximumRecursionDepth = 6
 
@@ -302,32 +346,8 @@ view state ui =
                 list = List.foldl ( \child acc -> child ++ acc ) [] children
                 
             in
-                ( Zipper.current zipper ) ++ ([ text ( String.fromInt max ) ]) ++ list
+                ( Zipper.current zipper ) ++ ([ span [ class "depth" ][ text ( String.fromInt max ) ]]) ++ list
 
-        -------------
-        {-
-        viewItems : Html msg
-        viewItems =
-            buildWindow
-            |> root >> getTree >> ( viewTree maximumRecursionDepth ) 
-
-
-        -- This recursive function maps viewItem on the tree
-        viewTree : Int -> Tree ( Item state ( Stack key ) msg )
-                -> List ( Html msg )
-        viewTree recursionsLeft tree =
-            let
-                children =
-                    Tree.descendants tree
-                    |> LL.toList
-                    |> List.foldl
-                        ( \child acc ->
-                                 ( viewTree ( recursionsLeft - 1 ) child ) ++ acc )
-                        []
-                    |> always []
-            in
-                ( Tree.item tree |> viewItem ) ++ children
-        -}
 
         viewItem : Item state ( Stack key ) msg 
             -> List ( Html msg )
@@ -345,8 +365,8 @@ view state ui =
                     button
                         [ onClick msg ] <| List.map static representation
                 Link { target, description } ->
-                    a   [ href ( ui.router target ) ]
-                        [ text description ]
+                    a   [ href ( ui.router target ), class "item" ] <|
+                        List.map static representation ++ [ text description ]
                 ChangeFocus relation ->
                     case relation of
                         Self k ->

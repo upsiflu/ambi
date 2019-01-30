@@ -1,4 +1,12 @@
-module Kind
+module Kind exposing
+    ( drawPassive
+    , drawInteractive
+    , drawChildren
+    )
+
+import UI
+import Html exposing (..)
+import Html.Attributes exposing (..)
 
 
 
@@ -7,167 +15,144 @@ module Kind
 
 
 
+{-
+    Kind
+
+    is the functionality of an Item within an App. 
+    It is named with one or more words, or accessed through
+    an Edit signature (if it is an appended item).
+     
+
+    Structure:
+
+    A concept with multiple definitions is an Arrangement.
+        In which case the child items are arranged in a
+        horizontal table with a header that connects those
+        items that are supposed to go together.
+    A concept with only one definition is a Rubric.
+        In which case we draw the children as a list.
+        The rubric is represented as a sticky, square caption.
+    A leaf is always an Input.
+        In which case an input controlshould be drawn, with
+        the concept name(s) as name.
+    A user-appended item is a Variance if it has multiple
+    different prototypes.
+        In which case we draw the children inside the focused
+        element's tab ring, not as items but as 'optional items'.
+
+    
+    Besides, we distinguish between unremovable, removable and removed items.
+    Structures with unambiguous prorotypes know whether they are
+    unappending or appending ones, and in the latter case we
+    also ask whether the prototype of appendal is singular or ambiguous.
+
+-}
 
 
 
 
 
-type Kind                                       -- persistence?
 
-    = Arrangement
+type Kind
 
-        { concepts: List App.Concept            -- Route
-        , appending:                            --
-            Maybe <| Either               
-                App.Prototype               
-                App.Multiprototype          
-        , children: Multiple Step               -- if appendable, Edit
+    = Arrangement Name App.Multidefinition
+        { this: IfAppended  { choices: Contexts Edit.Choice, removedBy: Contexts () }
+        , more: IfAppending ( Contexts Appendal )
         }
-
-    | Rubric
-
-        { concepts: List App.Concept            -- Route
-        , AndOr                                  
-            { removable: () }                   -- yes (can't change)
-            { appending:                        --
-                Either
-                    App.Prototype                
-                    App.Multiprototype           
-            }
-        , children: Multiple Item               -- if appendable, Edit
+    | Rubric Name 
+        { this: IfAppended  { choices: Contexts Edit.Choice, removedBy: Contexts () }
+        , more: IfAppending ( Contexts Appendal )
         }
-
-    | Input
-
-        { concepts: List App.Concept            -- Route
-        , removable: Bool                       -- Edit
-        , preview: Edit.Data                    -- Edit
+    | Input Name
+        { this: IfAppended  { choices: Contexts Edit.Choice, removedBy: Contexts () }
+        , data: Contexts Edit.Input
         }
-
-    | Ambiguous
-
-        { concepts: List App.Concept            -- Route
-        , removable: ()                         -- yes (can't change)
-        , possibilities: App.Multiprototype     -- 
-        }
-
-
-type AndOr a b
-    = This a
-    | That b
-    | Both
+    | Variance Name App.Multiprototype
+        { removedBy: Contexts () }
 
 
 
-editor messages =
-    Interface.Interactor
-        ( \locus -> messages.map message )
+type IfAppended a
+    = NotAppended
+    | Appended a
+
+type IfAppending a
+    = NotAppending
+    | Appending a
+
+type Appendal
+    = Unique App.Prototype
+    | Multi App.Multiprototype
 
 
+type alias Contexts a = 
+  List
+    { curator: Session.Signature
+    , seenBy: List ( Edit.SeenBy )
+    , undone: Bool
+    , transformation: a
+    }
 
 
+{-
+
+    drawing
+
+    The UI expects a drawer for the current item, 
+    as well as a wrapper for children in case there are any.
+
+-}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-interface : Kind -> Main.Msg -> Interface.Entry Locus msg
-interface item appendMsg key =
+drawChildrenWrapper : Kind -> Maybe ( List ( Html msg ) -> Html msg )
+drawChildrenWrapper kind =
     let
+        removedClass this =
+            case this of
+                NotAppended -> [ class "notAppended" ]
+                Appended { removedBy } -> map ( always <| class "removed" ) removedBy
 
-        plusP prototype =
-            { primaryAction: |> Interface.Button
-            , contextAction: Nothing
-            , view: div [ class "plus" ] [ text "+" ]
-            }
+    in case kind of
+        Arrangement name multidefinition { this, more } ->
+            Just ul <| [ class "inArrangement" ] ++ ( removedClass this )
+        Rubric name { this, more } -> 
+            Just ul <| [ class "inRubric" ] ++ ( removedClass this )
+        _ -> Nothing
 
-        ( primary, others ) =
-            case item of
-
-
-                Form
-
-                    { concepts
-                    , appending          
-                    , children
-                    } -> (  { primaryAction: Link Self 
-                            , contextAction: Nothing
-                            , view: text "=== FORM ==="
-                            }
-                         , 
-                            case appending of
-                                Nothing -> []
-                                Just proto ->
-                                    case proto of
-                                        Left single ->
-                                            [ plusP single ]
-                                        Right multi ->
-                                            [ plusPP multi ]
-                         )
-
-        Rubric
-
-        { concepts: List App.Concept            -- Route
-        , AndOr                                  
-            { removable: () }                   -- yes (can't change)
-            { appending:                        --
-                Either
-                    App.Prototype                
-                    App.Multiprototype           
-            }
-        , children: Multiple Item               -- if appendable, Edit
-        }
-
-        Input
-
-        { concepts: List App.Concept            -- Route
-        , removable: Bool                       -- Edit
-        , preview: Edit.Data                    -- Edit
-        }
-
-        Ambiguous
-
-        { concepts: List App.Concept            -- Route
-        , removable: ()                         -- yes (can't change)
-        , possibilities: App.Multiprototype     -- 
-        }
-
+drawPassive : Kind -> ( UI.Static, Maybe UI.Wrapper )
+drawPassive kind =
+    let
+        
     in
-        { signature: key
-        , contextMenu: Nothing
-        , tabstops: Interface.ring primary others
-        }
+     ( case kind of
+        Arrangement name multidefinition { this, more } ->
+            [ li [ class "arrangement" ] [ text "multidefinition: ", text name ] ]
+        Rubric name { this, more } ->
+            [ li [ class "rubric" ] [ text "rubric: ", text name ] ]
+        Input name ->
+            [ label [] [ span [] [ text name ], input [ type_ "text" ] [] ]
+        Variance name multiprototype  ->
+            [ li [ class "variance" ] [ text name, text " (variance)" ] ]
+      , drawChildrenWrapper kind )
+
+drawInteractive : Kind -> ( UI.ActionRing, Maybe UI.Wrapper )
+drawInteractive kind =
+    let
+    
+        drawInput name =
+            label [] [ span [] [ text name ], input [ type_ "text" ] [] ]
+        drawVariance multiprototype =
+            name [] [ span [] [ text nameText ], div [] [ text "variance" ] ]
+            
+    in 
+     ( case kind of
+        Arrangement name multidefinition { this, more } ->
+            ( drawArrangement name ) ++ ( drawPlus more )
+        Rubric name { this, more } -> 
+            ( drawRubric name ) ++ ( drawPlus more ) 
+        Input name ->
+            ( drawInput name )
+        Variance name multiprototype  ->
+            ( drawVariance name ) ++ ( drawMultiprototype multiprototype )
+      , drawChildrenWrapper kind
+      )

@@ -25,43 +25,33 @@ import App exposing (encodeConcept, encodeWord)
 
     Locus
     
-    locates any actionable item within a Site.
-    It omits the Relations, but may include Edit numbers
-    to visit dynamically created items as well as extra steps
-    to locate (but keep ambiguous) perspectives.
+    is an address in an app. Every locus can have data and/or
+    discussions attached. Objects added with a + receive the
+    name of the edit that created them.
     
-(L) Leaves contain editable data.
-(I) Instances are created from Templates. Each is named after
-    the signature of the Edit that created it.
-(P) If multiple Alternatives define one concept, choose one.
-    
-    It goes from outside to inside, but you can reverse a locus.
-    A locus can describe a rel. or abs. path through your app.
-    
-    Each data and each edit has exactly one abs. locus.
-    Concepts that are actionable (e.g. with +) are also listed.
-    Passive concepts are concatenated with their successor.
+    A Concepts whose definition is only one concept are 'transitive'
+    in that they stick with their child.
     
     Example:
     
-    a                      -- passive concept; not listed.
-     b      -- ab          -- editable.
-     c                     -- passive concept; not listed.
-      d     -- ac/d        -- actionable: +
-       +                   -- relation; not listed.
-        e   -- ac/d/0.0.0  -- editable; removable.
+    a                      -- Rubric (has multiple children).
+     b      -- a-b         -- editable.
+     c                     -- transitive concept; not listed.
+      d     -- a-c/d       -- actionable: +; Multidefinition (Arrangement).
+       +                   -- Relations are not listed.
+        e   -- a-c/d/0.0.0 -- editable; removable.
        +
-        f   -- ac/d/1.0.0  -- removable.
-         g  -- ac/d/1.0.0/g-- editable.
-      d
-       g    -- ac/d/g      -- editable.
+        f                  -- swallowed by g.
+         g  -- a-c/d/1.0.0 -- editable.
+      d                    -- same as the other d.
+       g    -- a-c/d/g     -- editable.
 
  ----------------------------------------------------------------}
 
 
 
-type Locus = Locus (List Step)
-type Step  = L Leaf | E Edit.Signature | P Perspective
+type alias Locus = List Step
+type alias Step  = List String
 
 
 
@@ -127,32 +117,9 @@ type Step  = L Leaf | E Edit.Signature | P Perspective
         
  ----------------------------------------------------------------}
 
-
-type Perspective = Perspective { options:Variation, choice:Variant }
-
-
-    
-    
-    
     
 -- ENCODING --
 
 
 
 type alias Path = List String
-
-encode : Locus -> Path
-encode ( Locus step:s ) =
-    encode s 
-    |> (::) case step of
-         L l -> encodeLeaf l
-         E e -> Edit.signature e
-         P p -> encodePerspective p
-         
-
-encodePerspective (Perspective variation variant) =
-    (encodeLocus variation) ++ "=" ++ (encodeDefinition variant) 
-
-encodeDefinition (Definition group) =
-    group |> map encodeWord |> String.join (",")
-

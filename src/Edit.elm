@@ -4,7 +4,6 @@ module Edit exposing
     -- readable --
     , signature )
 
-import Moderation
 import Locus
 
 
@@ -35,7 +34,7 @@ import Locus
     may arise. The Review panel can be used to either resolve
     ambiguities or lift them to data-level Ambivalence.
     For completeness, you can also construct ambiguity locally.
-    
+
  -- Composability of Edits --------------------------------------
  
     A modification is anything a user can do with data.
@@ -49,12 +48,30 @@ import Locus
     
     When parsing edits, the Zero Data is encapsulated in more
     data objects, registering only positive changes.
+
+ -- Synchronization
+    
+    You can only construct local edits. As the server eventually
+    responds, an update in Main can trigger the function 
+    'isOnline' which transforms a local edit into an online one.
+
+    isOnline takes a state and returns the same state with only
+    the 'sync' bit of the affected edit altered.
+
+    Neither of these will be broadcast. The only deflection
+    that will happen is when I receive a remote file, I add an
+    Edit of constructor 'Seen'. As it broadcasts, my peers can
+    break down this to data 'seenBy.'
     
  ----------------------------------------------------------------}
 
 
 type Edit
-    = Edit Signature Modification
+    = Edit Signature Modification Sync
+
+type Syc
+    = Local
+    | Online
 
 
 type Modification ------------ TODO: LOCUS ------ PARAMETER limits ----------
@@ -63,14 +80,16 @@ type Modification ------------ TODO: LOCUS ------ PARAMETER limits ----------
     | Remove Edit                 -- --           appended to this
     | Put String                  -- leafy        --
     | Choose PrototypeChoice      -- Alternation  is choice within locus 
+    | Seen Edit
 
-
-type Data -------------------- TODO: LOCUS ------ PARAMETER limits ----------
+type Modified -------------------- TODO: LOCUS ------ PARAMETER limits ----------
     = Zero                        -- --
     | Appended Signature Data     -- appendable   
     | Input String Data           -- leafy
     | Choice PrototypeChoice Data -- Alternation  is choice within alternative groups (Prototypes) 
+    | SeenBy ( Session.id )
         
+--type Data -- MERGED INTO TYPE.
 
 type Signature = Signature {o:Ordinal, n:Session.Name, context:Session.Name}
  
