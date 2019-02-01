@@ -66,21 +66,19 @@ import Tagged exposing ( tag )
     order and nesting, as in introductions being merged and
     enclosed, with title, into a header:
 
-    -- article ---------
-     -- header --------
-         title
-         introductions
-         (autonav)
-     ------------------
-     -- main ----------
-         miscs,
-         lists
-         (in any order)
-     ------------------
-     -- footer --------
-         (autometa)
-     ------------------
-    --------------------
+    -- article -------------
+       -- header --------
+          title
+          ?introductions
+          ?(autonav)
+       ------------------
+       miscs,
+       lists
+       (in any order)
+      ?-- footer --------
+          (autometa)
+       ------------------
+    ------------------------
     
 
 
@@ -119,10 +117,6 @@ type alias Wrapper msg = List ( Html msg ) -> Html msg
 type alias Router =
     String -> String
 
--- get breadcrumbs to an item.
-type alias Keys key state =
-    state -> Stack key
-
 -- get multiple single steps.
 type alias Steps key state =
     state -> List key
@@ -142,125 +136,70 @@ type alias KeyedDrawer key state msg =
 -- as well as a wrapper for children
 -- for an item
 type alias KeyedInteractivator key state msg =
-    Stack key -> state ->
+    state -> Stack key ->
     ( ActionRing ( Stack key ) msg, Maybe ( Wrapper msg ) )
 
 type alias ChildSteps key state =
-    Stack key -> state -> List key
-
-type alias Messager key msg =
-    Stack key -> msg
-
-type alias Stringer key =
-    Stack key -> String
-
-type alias Message msg =
-    msg
-
-type alias Statically =
-    Static
+    state -> Stack key -> List key
 
 type alias UI key state msg =
- 
-    {
-    -- reading a Url
-      router: Router
-    , windowKeys: Keys key state
-    , intendedFocus: Steps key state
-    , prologue: Drawer state
-
-    -- items over stack respond to state.
-    , drawPassiveItem: KeyedDrawer key state msg
-    , drawInteractiveItem: KeyedInteractivator key state msg
-    , getChildKeys: ChildSteps key state
-    
-    -- Provide these Messages for internal navigation.
-    , putFocus: Messager key msg
-    , getLink: Stringer key
-    , back: Message msg
-    
-    , epilogue: Statically
-    , meta: Statically
+     {
+      item:
+        { presentation: state -> Stack key -> Static
+        , interaction: state -> Stack key -> ActionRing ( Stack key ) msg
+        , role: state -> Stack key -> Role
+        , childrenWrapper: state -> Stack key -> ( List Html msg -> List Html msg )
+        , childrenKeys: state -> Stack key -> List key
+        }
+    , page:
+        { prologue: Static
+        , epilogue: Static
+        , meta: Static
+        , window: state -> Stack key
+        , focus: state -> List key
+        }
+    , navigate:
+        { focus: Stack key -> msg
+        , back: msg
+        , link: state -> Stack key -> String
+        }
     }
 
-type alias Readers key state =
-    {
-    -- reading a Url
-      router: Router
-    , windowKeys: Keys key state
-    , intendedFocus: Steps key state
-    , prologue: Drawer state
-    }
-type alias Drawers key state msg =
-    {
-    -- items over stack respond to state.
-      drawPassiveItem: KeyedDrawer key state msg
-    , drawInteractiveItem: KeyedInteractivator key state msg
-    , getChildKeys: ChildSteps key state
-    }
-type alias Messagers key msg =
-    {
-    -- Provide these Messages for internal navigation.
-      putFocus: Messager key msg
-    , getLink: Stringer key
-    , back: Message msg
-    
-    , epilogue: Statically
-    , meta: Statically
-    }
-
-
-create : Readers key state -> Drawers key state msg -> Messagers key msg -> UI key state msg
-create readers drawers messagers =
-    {
-    -- reading a Url
-      router = readers.router
-    , windowKeys = readers.windowKeys
-    , intendedFocus = readers.intendedFocus
-    , prologue = readers.prologue
-
-    -- items over stack respond to state.
-    , drawPassiveItem = drawers.drawPassiveItem
-    , drawInteractiveItem = drawers.drawInteractiveItem
-    , getChildKeys = drawers.getChildKeys
-    
-    -- Provide these Messages for internal navigation.
-    , putFocus = messagers.putFocus
-    , getLink = messagers.getLink
-    , back = messagers.back
-    
-    , epilogue = messagers.epilogue
-    , meta = messagers.meta
-    }
+create representation page events = UI
 
 
 
 
--- An element that is already assigned a position (stack).
-type Item state stack msg
-    = Interactive ( state -> ( ActionRing stack msg ) )
-    | Passive ( state -> List ( Html msg ) ) -- forgets its stack
+-- An element that is already assigned a path.
+type Item state path msg
+    = Interactive ( ActionRing path msg )
+    | Passive ( List ( Html msg ) ) -- forgets its path
 
 -- Rotate with Tab key.
-type alias ActionRing stack msg =
-    Ring ( InteractiveElement stack msg )
+type alias ActionRing path msg =
+    Ring ( InteractiveElement path msg )
 
 -- Define an element as the product of one interactivity and one representation.
-type alias InteractiveElement stack msg =
-    { interactivity: Interactivity stack msg
-    , representation: Static }
+type alias InteractiveElement path msg =
+    { interactivity: Interactivity path msg
+    , presentation: Static }
 
-type Interactivity stack msg
+type Interactivity path msg
     = Button msg
-    | Link { target: String, description: String }
-    | ChangeFocus ( Relative stack )
-
-type Relative stack
-    = Self stack
+    | Link { target: String }
+    | Self path
     | Cancel
     | OK
     | Dismiss
     | Back
+
+type Role           
+    = Caption
+    | ListItem
+    | Aside
+    | Group
+    | Text
+
 
 
 
@@ -272,45 +211,42 @@ view : state -> UI key state msg -> Html msg
 view state ui =
     let
         -- Evaluate lazy variables
-        window : Stack key
-        window = state |> ui.windowKeys
-        steps : List key
-        steps = state |> ui.intendedFocus
+        ( window, steps ) = ( ui.page.window state, ui.page.focus state )
 
         -- Draw static Html
-        viewPrologue = List.map static ( ui.prologue state ) |> section []
-        viewEpilogue = List.map static ui.epilogue |> section []
-        viewMeta = List.map static ui.meta |> section []
+        viewPrologue = map static ui.page.prologue |> section []
+        viewEpilogue = map static ui.page.epilogue |> section []
+        viewMeta     = map static ui.page.meta     |> section []
 
         -- Append each child keys to a copy of this stack
-        childStacks : Stack key -> List ( Stack key )
-        childStacks stack =
-            ui.getChildKeys stack state
-            |> map ( \key -> push key stack )
+        childPaths : Stack key -> List ( Stack key )
+        childPaths path =
+            ui.item.childrenKeys path state
+            |> map ( \key -> push key path )
     
         -- Any passive item doubles as a navigation button to itself
         toPassiveItem : Stack key -> Item state ( Stack key ) msg
-        toPassiveItem stack =
-            ui.drawPassiveItem stack
-            |> mapFirst withNavigation
-            |> Passive
+        toPassiveItem =
+            ui.item.presentation
+            >> mapFirst withNavigation
+            >> Passive
                   
         -- ActionRings are simply wrapped in an Item container
         toInteractiveItem : Stack key -> Item state ( Stack key ) msg
         toInteractiveItem =
-            ui.drawInteractiveItem >> Interactive
+            ui.item.interaction state |> Interactive
   
         -- puts anything in a link leading to itself
-        withNavigation : ( Stack key -> state -> List ( Html Never ) ) -> 
-                         ( Stack key -> state -> List ( Html msg ) )
+        withNavigation : ( state -> Stack key -> List ( Html Never ) ) -> 
+                         ( state -> Stack key -> List ( Html msg ) )
         withNavigation drawer =
             let
-                newDrawer : Stack key -> state -> List ( Html msg )
-                newDrawer stack st =
-                    drawer stack st                                  --draw
-                    |> List.map static                              --make general
-                    |> a [ href ( ui.getLink stack ), class "item" ]
-                    |> \n -> n :: []
+                newDrawer : state -> Stack key -> List ( Html msg )
+                newDrawer state path =
+                    drawer state path                                --draw
+                    |> map static                                    --make general
+                    |> a [ href ( ui.navigate.link path ), class "item" ]
+                    |> List.singleton
             in
                 newDrawer
             
@@ -332,8 +268,6 @@ view state ui =
 
 ---------- VIEWING -----------------------------------------------------------
 
-        -- new: we first map the drawFunction, then we take the first 100.
-
         viewWindow = buildWindow |> Zipper.map viewItem
  
         viewItems = zipperTake maximumRecursionDepth viewWindow |> ul []
@@ -344,7 +278,6 @@ view state ui =
                 children = if ( max < 0 ) then [] else
                     Zipper.openAll zipper |> List.map ( zipperTake ( max - 1 ) )
                 list = List.foldl ( \child acc -> child ++ acc ) [] children
-                
             in
                 ( Zipper.current zipper ) ++ ([ span [ class "depth" ][ text ( String.fromInt max ) ]]) ++ list
 
@@ -362,28 +295,26 @@ view state ui =
         viewElement { interactivity, representation } =
             case interactivity of
                 Button msg ->
-                    button
-                        [ onClick msg ] <| List.map static representation
+                    button  [ onClick msg ]
+                            <| map static presentation
                 Link { target, description } ->
-                    a   [ href ( ui.router target ), class "item" ] <|
-                        List.map static representation ++ [ text description ]
-                ChangeFocus relation ->
-                    case relation of
-                        Self k ->
-                            a   [ class "self", ui.getLink k |> href ]
-                                [ text "#" ]
-                        Cancel ->
-                            button   [ class "cancel", onClick ui.back ]
-                                [ text "cancel" ]
-                        OK ->       
-                            button   [ class "ok", onClick ui.back ]
-                                [ text "OK" ]
-                        Dismiss ->
-                            button   [ class "dismiss", onClick ui.back ]
-                                [ text "v" ]
-                        Back ->
-                            button   [ class "back", onClick ui.back ]
-                                [ text "<" ]
+                    a       [ href ( ui.router target ), class "item" ]
+                            <| map static presentation
+                Self k ->
+                    a       [ class "self", ui.getLink k |> href ]
+                            [ text "#" ]
+                Cancel ->
+                    button  [ class "cancel", onClick ui.back ]
+                            [ text "cancel" ]
+                OK ->       
+                    button  [ class "ok", onClick ui.back ]
+                            [ text "OK" ]
+                Dismiss ->
+                    button  [ class "dismiss", onClick ui.back ]
+                            [ text "v" ]
+                Back ->
+                    button  [ class "back", onClick ui.back ]
+                            [ text "<" ]
 
     in
         ul [] <| viewPrologue :: viewItems :: viewEpilogue :: viewMeta :: []
