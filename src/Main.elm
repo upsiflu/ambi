@@ -24,7 +24,16 @@ main : Program () Model Msg
 main =
   Browser.application
     { init = init
-    , view = UI.view model.state ui
+    , view =
+        { item = Kind.view
+        , page = Route.view
+        , navigate =
+            { focus = PutFocus
+            , back = Back
+            , link = Route.link
+            }
+        }
+        |> UI.view model.state
     , update = update
     , subscriptions = subscriptions
     , onUrlChange = UrlChanged
@@ -102,40 +111,10 @@ subscriptions _ =
 
 -- UI
 
-initialUI : UI String Model Msg
-initialUI =
+ui : UI String Model Msg
+ui =
  UI.create       
     {     
     -- reading a Url
-      router = identity -- for strings
-    , windowKeys =    always []
-    , intendedFocus = \state -> state.focus
-    , prologue = always [ text "Prologue" ]
-    }
-    {
-    -- items over keys respond to state.
-      drawPassiveItem =    
-        (\stack state ->
-            [ App.getString stack state.app |> text ] )
-    , drawInteractiveItem =
-        (\stack state ->
-           UI.ring  
-            { interactivity =    
-                UI.Link { target = "", description = App.getString stack state.app }
-            , representation =
-                [ text "FOCUS" ] } [] )
-    , getChildKeys =
-        (\stack state ->
-            App.getFirstSteps stack state.app )
-    }
-    {  
-    -- Providing these Messages for internal navigation
-      putFocus = (\stack -> PutFocus stack )
-    , getLink = (\stack -> "" )
-    , back = Back
-    --------------------------------------------------
-    , epilogue = [ text "epilogue" ]
-    , meta = [ text "meta" ]
-    --------------------------------------------------
     }
  

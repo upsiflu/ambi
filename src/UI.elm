@@ -7,11 +7,10 @@ module UI exposing
     , ActionRing
     , InteractiveElement
     , Interactivity (..)
-    , Relative (..)
     , ring
-    , Stack
     , Static 
     , create
+    , Role (..)
 
     -- intercept stack to annotate views --
     , Indicator
@@ -19,8 +18,9 @@ module UI exposing
 
 import Debug
 
-import Tuple exposing (first, second, mapFirst, mapSecond)
-import List exposing (map)
+import Tuple exposing ( first, second, mapFirst, mapSecond )
+import List exposing ( map )
+import Stack exposing ( .. )
 
 import Lazy.Tree as Tree exposing ( Tree )
 import Lazy.LList as LL exposing ( LList )
@@ -111,45 +111,23 @@ import Tagged exposing ( tag )
  -}
 
 type alias Static = List ( Html Never )
-type alias Wrapper msg = List ( Html msg ) -> Html msg 
-
--- get a permanent link href to an item.
-type alias Router =
-    String -> String
+type alias Dynamic msg = List ( Html msg ) 
 
 -- get multiple single steps.
-type alias Steps key state =
+type alias Steps state key =
     state -> List key
 
--- get a static representation.
-type alias Drawer state =
-    state -> Static
-
--- get a static representation
--- as well as a wrapper for children
--- for an item
-type alias KeyedDrawer key state msg =
-    Stack key -> state ->
-    ( Static, Maybe ( Wrapper msg ) )
-
--- get a static representation
--- as well as a wrapper for children
--- for an item
-type alias KeyedInteractivator key state msg =
-    state -> Stack key ->
-    ( ActionRing ( Stack key ) msg, Maybe ( Wrapper msg ) )
-
-type alias ChildSteps key state =
+type alias ChildSteps state key =
     state -> Stack key -> List key
 
-type alias UI key state msg =
+type alias UI state key msg =
      {
-      item:
-        { presentation: state -> Stack key -> Static
-        , interaction: state -> Stack key -> ActionRing ( Stack key ) msg
-        , role: state -> Stack key -> Role
-        , childrenWrapper: state -> Stack key -> ( List Html msg -> List Html msg )
-        , childrenKeys: state -> Stack key -> List key
+      items: state -> Stack key ->
+        { presentation: Static
+        , interaction: ActionRing ( Stack key ) msg
+        , role: Role
+        , childrenWrapper: ( Dynamic msg -> Dynamic msg )
+        , childrenKeys: List key
         }
     , page:
         { prologue: state -> Static
@@ -165,7 +143,7 @@ type alias UI key state msg =
         }
     }
 
-create representation page events = UI
+create items page navigate = {items=items, page=page, navigate=navigate}
 
 
 
@@ -173,7 +151,7 @@ create representation page events = UI
 -- An element that is already assigned a path.
 type Item state path msg
     = Interactive ( ActionRing path msg )
-    | Passive ( List ( Html msg ) ) -- forgets its path
+    | Passive ( Dynamic msg ) -- forgets its path
 
 -- Rotate with Tab key.
 type alias ActionRing path msg =
@@ -186,7 +164,7 @@ type alias InteractiveElement path msg =
 
 type Interactivity path msg
     = Button msg
-    | Link { target: String }
+    | Link { url: String }
     | Self path
     | Cancel
     | OK
@@ -207,54 +185,39 @@ type Role
 ------------------------------------------------------------------------------
 
 --The view of an ui only depends on the state.
-view : state -> UI key state msg -> Html msg
-view state ui =
+view : UI state key msg -> state -> { title: String, body: Html msg }
+view ui state =
     let
+        items = ui.items state
+        
         -- Evaluate lazy variables
         ( window, steps ) = ( ui.page.window state, ui.page.focus state )
 
         -- Draw static Html
-        viewPrologue = map static ui.page.prologue |> section []
-        viewEpilogue = map static ui.page.epilogue |> section []
-        viewMeta     = map static ui.page.meta     |> section []
+        viewPrologue = map static ( ui.page.prologue state ) |> section []
+        viewEpilogue = map static ui.page.epilogue           |> section []
+        viewMeta     = map static ui.page.meta               |> section []
 
         -- Append each child keys to a copy of this stack
         childPaths : Stack key -> List ( Stack key )
-        childPaths path =
-            ui.item.childrenKeys path state
-            |> map ( \key -> push key path )
-    
+        childPaths = \path -> path |>
+            items >> .childrenKeys >> map ( \key -> push key path )
+
         -- Any passive item doubles as a navigation button to itself
         toPassiveItem : Stack key -> Item state ( Stack key ) msg
         toPassiveItem =
-            ui.item.presentation
-            >> mapFirst withNavigation
-            >> Passive
+            items >> .presentation >> map static >> Passive
                   
         -- ActionRings are simply wrapped in an Item container
         toInteractiveItem : Stack key -> Item state ( Stack key ) msg
         toInteractiveItem =
-            ui.item.interaction state |> Interactive
-  
-        -- puts anything in a link leading to itself
-        withNavigation : ( state -> Stack key -> List ( Html Never ) ) -> 
-                         ( state -> Stack key -> List ( Html msg ) )
-        withNavigation drawer =
-            let
-                newDrawer : state -> Stack key -> List ( Html msg )
-                newDrawer state path =
-                    drawer state path                                --draw
-                    |> map static                                    --make general
-                    |> a [ href ( ui.navigate.link path ), class "item" ]
-                    |> List.singleton
-            in
-                newDrawer
+            items >> .interaction >> Interactive
             
         -- build the tree from the window, focus, map to items.
         buildWindow : Zipper ( Item state ( Stack key ) msg )
         buildWindow =
             window                                              -- top item
-            |> Tree.build childStacks                           -- Tree
+            |> Tree.build childPaths                            -- Tree
             |> Zipper.fromTree                                  -- Zipper ( stack )
             |> Zipper.attemptOpenPath (
                     \s stack ->
@@ -282,38 +245,37 @@ view state ui =
                 ( Zipper.current zipper ) ++ ([ span [ class "depth" ][ text ( String.fromInt max ) ]]) ++ list
 
 
-        viewItem : Item state ( Stack key ) msg 
-            -> List ( Html msg )
+        viewItem : Item state ( Stack key ) msg -> Dynamic msg
         viewItem item =
             case item of
-                Passive content -> content state
+                Passive content -> content
                 Interactive actionRing ->
-                    ringList ( state |> actionRing )
+                    ringList actionRing
                     |> List.map viewElement
     
         viewElement : InteractiveElement ( Stack key ) msg -> Html msg 
-        viewElement { interactivity, representation } =
+        viewElement { interactivity, presentation } =
             case interactivity of
                 Button msg ->
                     button  [ onClick msg ]
                             <| map static presentation
-                Link { target, description } ->
-                    a       [ href ( ui.router target ), class "item" ]
+                Link { url } ->
+                    a       [ href ( url ), class "item" ]
                             <| map static presentation
                 Self k ->
-                    a       [ class "self", ui.getLink k |> href ]
+                    a       [ class "self", ui.navigate.link state k |> href ]
                             [ text "#" ]
                 Cancel ->
-                    button  [ class "cancel", onClick ui.back ]
+                    button  [ class "cancel", onClick ui.navigate.back ]
                             [ text "cancel" ]
                 OK ->       
-                    button  [ class "ok", onClick ui.back ]
+                    button  [ class "ok", onClick ui.navigate.back ]
                             [ text "OK" ]
                 Dismiss ->
-                    button  [ class "dismiss", onClick ui.back ]
+                    button  [ class "dismiss", onClick ui.navigate.back ]
                             [ text "v" ]
                 Back ->
-                    button  [ class "back", onClick ui.back ]
+                    button  [ class "back", onClick ui.navigate.back ]
                             [ text "<" ]
 
     in
@@ -348,23 +310,6 @@ asAnnotator indicator drawer
 
 ------------ STRUCTURES -------------------------------------------------------
 
-type alias Stack a = List a
-
-push : a -> Stack a -> Stack a
-push k stack =
-    k::stack
-
-pop : Stack a -> Stack a
-pop stack =
-    case stack of
-        s::tack -> tack
-        [] -> []
-
-top : Stack a -> Maybe a
-top stack = 
-    case stack of
-        s::tack -> Just s
-        [] -> Nothing
         
 -- Type helpers
 

@@ -4,7 +4,7 @@ import Lazy.Tree as Tree exposing ( build, Forest )
 import Lazy.Tree.Zipper as Zipper exposing ( Zipper, openAll, current, fromTree, attemptOpenPath )
 import List exposing ( reverse, map )
 
-import UI exposing ( Stack )
+import Stack exposing ( .. )
 
 
 
@@ -79,7 +79,7 @@ getString l a =
 getApp : Locus -> App -> App
 getApp l app =
     attemptOpenPath ( \step word -> wordToStep word == step ) ( reverse l ) app
-
+ 
 
 
 ------------------------------------------------------
@@ -198,3 +198,4 @@ wordToStep word =
          Symbolizing More -> "+"
          Naming (Concept string) -> string
          
+ 
