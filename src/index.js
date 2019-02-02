@@ -3,18 +3,32 @@ import { Elm } from './Main.elm';
 import registerServiceWorker from './assets/registerServiceWorker';
 
 var app = Elm.Main.init({
-  node: document.getElementById('root')
+  node: document.getElementById('root'),
+  flags: { auth: "flupsi" }
 });
-//app.ports.requestType.subscribe (requestType)
+app.ports.outgoing.subscribe (outgoing)
+setTimeout ( function () { app.ports.incoming.send (site) }, 1000)
 
 
-
-function requestType (typeID) {
-    app.ports.receiveType.send (deliverType (typeID));
+var site = {
+    site: {
+        title: "sss",
+        created: "tttttt",
+        creator: "flupsi",
+        curator: "flupsi",
+        app: exampleApp(),
+        public: "00000",
+        draft: "00000",
+        datacopy: []
+    }
+    
 }
 
-function deliverType (typeID) {
-    return `
+function outgoing (data) {
+    app.ports.receiveType.send (deliverType (data));
+}
+
+var exampleApp = function () { return `
     { "flupsicom":
         { "works + work + paragraph": {}
         , "CV":

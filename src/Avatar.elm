@@ -1,4 +1,4 @@
-port module Avatar exposing (Avatar, Signature)
+module Avatar exposing (Avatar, Signature)
 
 
 

@@ -152,7 +152,7 @@ type alias UI key state msg =
         , childrenKeys: state -> Stack key -> List key
         }
     , page:
-        { prologue: Static
+        { prologue: state -> Static
         , epilogue: Static
         , meta: Static
         , window: state -> Stack key
@@ -317,8 +317,10 @@ view state ui =
                             [ text "<" ]
 
     in
-        ul [] <| viewPrologue :: viewItems :: viewEpilogue :: viewMeta :: []
-
+        { title = "UI" 
+        , body =
+            ul [] <| viewPrologue :: viewItems :: viewEpilogue :: viewMeta :: []
+        }
 
 
 

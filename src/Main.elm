@@ -1,13 +1,21 @@
+port module Main exposing (..)
+
 import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Url
+import Url exposing (Url)
 import Dict exposing (Dict)
+import Json.Encode as E
 
 import UI exposing ( .. )
 import App exposing ( .. )
-     
+import Me
+
+port outgoing : E.Value -> Cmd msg
+port incoming : ( E.Value -> msg ) -> Sub msg
+
+
 
 -- MAIN
 
@@ -16,7 +24,7 @@ main : Program () Model Msg
 main =
   Browser.application
     { init = init
-    , view = view
+    , view = UI.view model.state ui
     , update = update
     , subscriptions = subscriptions
     , onUrlChange = UrlChanged
@@ -27,20 +35,27 @@ main =
    
 -- MODEL
 
-type alias State =
-    {  }
-
 type alias Model =
   { key: Nav.Key
-  , app: App
-  , focus: List String
+  , state:
+    { curator: Me, site: Site, version: Version, session: Session, route: Route }
   , url: Url.Url
   }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-  ( Model key App.initialApp [] url, Cmd.none )
+    let
+        ( siteToken, versionToken, sessionToken ) = ({ "flupsi", "blog" }, 0, 0 )
+
+    in ( Model key
+        { curator = Me.nobody
+        , site = Site.load siteToken
+        , version = Version.load versionToken
+        , session = Session.load sessionToken
+        }
+        url
+       , loadSite )
 
  
 
@@ -124,15 +139,3 @@ initialUI =
     --------------------------------------------------
     }
  
- 
--- VIEW
-
-
-view : Model -> Browser.Document Msg
-view model =
-  { title = "Milestone0.1"
-  , body =   
-      [ h3 [] [ text (Url.toString model.url) ]
-      , initialUI |> UI.view model
-      ]
-  } 

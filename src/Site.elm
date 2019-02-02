@@ -70,7 +70,7 @@ type alias Signature = -- Tag specific to one Site.
     Tagged Signed Token
 
 showSignature : Signature -> String
-showSignature = { curator, app } -> curator++" / "++app
+showSignature = { creator, app } -> creator ++ " / " ++ app
 
 type alias Token = -- Tokens can only be created by the Site. As can apps.
     { creator: String, app: String } -- Creators may vanish, their sites live on.

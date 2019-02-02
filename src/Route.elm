@@ -142,4 +142,11 @@ routeParser =
 -- VIEW
 
 viewPrologue : Route -> Html Never
-viewPrologue route = route.location |> text Site.showSignature |> h1 []
+viewPrologue route = route.
+
+
+view =
+    { prologue = \state -> [ state.route.location |> text Site.showSignature |> h1 [] ]
+    , epilogue = [ text "epilogue" ]
+    , meta = [ text "meta" ]
+    }

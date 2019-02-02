@@ -96,21 +96,14 @@ Firebase creates automatic ids optimized for distributed retrieval. They are not
 
 
 
+# Information Flow
+
+_Preservation of intent and total transparency about what happens with your data are basic tenets of the Tangible system. In this vein, I'll present the workings of Ambilang in terms of the flow of information, from input through propagation and storage, to retreival and presentation._
 
 
+## App
 
-
-250x	─	━	│	┃	┄	┅	┆	┇	┈	┉	┊	┋	┌	┍	┎	┏
-U+251x	┐	┑	┒	┓	└	┕	┖	┗	┘	┙	┚	┛	├	┝	┞	┟
-U+252x	┠	┡	┢	┣	┤	┥	┦	┧	┨	┩	┪	┫	┬	┭	┮	┯
-U+253x	┰	┱	┲	┳	┴	┵	┶	┷	┸	┹	┺	┻	┼	┽	┾	┿
-U+254x	╀	╁	╂	╃	╄	╅	╆	╇	╈	╉	╊	╋	╌	╍	╎	╏
-U+255x	═	║	╒	╓	╔	╕	╖	╗	╘	╙	╚	╛	╜	╝	╞	╟
-U+256x	╠	╡	╢	╣	╤	╥	╦	╧	╨	╩	╪	╫	╬	╭	╮	╯
-U+257x	╰	╱	╲	╳	╴	╵	╶	╷	╸	╹	╺	╻	╼	╽	╾	╿
-
-
-
+An App is a tree of _Concepts_. <aside>Will this appear aside?</aside>
 
 
 
